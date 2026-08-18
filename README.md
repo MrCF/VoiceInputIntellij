@@ -1,141 +1,260 @@
-# Voice-input
+# Voice Input
 
-[![Twitter Follow](https://img.shields.io/badge/follow-%40JBPlatform-1DA1F2?logo=twitter)](https://twitter.com/JBPlatform)
-[![Developers Forum](https://img.shields.io/badge/JetBrains%20Platform-Join-blue)][jb:forum]
+Local speech-to-text dictation for IntelliJ-based IDEs, powered by
+[whisper.cpp](https://github.com/ggml-org/whisper.cpp).
 
-## Overview
+Voice Input lets you dictate text directly at the current cursor position without sending your audio to an external speech-to-text service.
 
-This repository implements an IntelliJ Platform plugin.
+Audio recording and transcription are performed locally on your computer.
 
-## Plugin structure
+## Features
 
-A generated project contains the following content structure:
+- 🎙 Local speech-to-text using whisper.cpp
+- 🔒 No cloud speech-to-text API required
+- ⌨️ Toggle dictation with `Meta+V`
+- 🎤 Push-to-Talk directly from the IDE status bar
+- ⏱ Automatic stop after configurable silence
+- 🗣 Voice Activity Detection (VAD)
+- 🧠 Context-aware Whisper prompting
+- 💻 Automatic detection of technical identifiers from the current editor
+- 📜 Transcription history
+- 📋 Copy and re-insert previous transcriptions
+- 🔴 Visible recording indicator and timer
+- 🌍 Multilingual transcription through Whisper
+- ⚙️ Configurable Whisper model and language
 
-```
-.
-├── .run/                   Predefined Run/Debug Configurations
-├── gradle
-│   ├── wrapper/            Gradle Wrapper
-│   ├── libs.versions.toml  Version catalog
-├── src                     Plugin sources
-│   └── main
-│       ├── kotlin/         Kotlin production sources
-│       └── resources/      Plugin resources
-│           ├── META-INF/   Plugin configuration file and logo
-│           └── messages/   Message bundles
-├── .gitignore              Git ignoring rules
-├── build.gradle.kts        Gradle build configuration
-├── gradle.properties       Gradle configuration properties
-├── gradlew                 *nix Gradle Wrapper script
-├── gradlew.bat             Windows Gradle Wrapper script
-├── README.md               This file
-└── settings.gradle.kts     Gradle project settings
-```
+## How it works
 
-In addition to the configuration files, the most crucial part is the `src` directory, which contains our implementation and the manifest for our plugin – [plugin.xml][file:plugin.xml].
+Voice Input records microphone audio and sends it to a local whisper.cpp runtime.
 
-> [!NOTE]
-> To use Java in your plugin, create the `/src/main/java` directory.
+The resulting transcription is inserted directly at the position where dictation was started.
 
-The plugin logo is placed in `src/main/resources/META-INF/pluginIcon.svg`. See [Plugin Logo][docs:logo] for more information and logo requirements.
+No OpenAI API key or external speech-to-text service is required.
 
-## Build script
+Voice Input can also inspect the surrounding editor context and use relevant technical identifiers as a Whisper prompt.
 
-The [build.gradle.kts][file:build.gradle.kts] is the core of the project definition. It applies three Gradle plugins:
+For example, identifiers such as:
 
-| Plugin                            | Description                                                                      |
-|-----------------------------------|----------------------------------------------------------------------------------|
-| `org.jetbrains.kotlin.jvm`        | Adds Kotlin support                                                              |
-| `org.jetbrains.changelog`         | Simplifies patching the [CHANGELOG.md][file:CHANGELOG.md] file                   |
-| `org.jetbrains.intellij.platform` | The [IntelliJ Platform Gradle Plugin][docs:intellij-platform-gradle-plugin-docs] |
-
-The `intellijPlatform` dependencies block selects the IDE to compile against:
-
-```kotlin
-intellijIdea("2025.3.5")
+```text
+CustomerController
+CustomerService
+PostMapping
+ResponseEntity
 ```
 
-See [Target Versions][docs:target-version] for more information.
+can help Whisper recognize project-specific technical vocabulary.
 
-The `intellijPlatform` dependencies block also contains a dependency on the platform testing framework:
+## Dictation modes
 
-```kotlin
-testFramework(TestFrameworkType.Platform)
+### Toggle dictation
+
+The default shortcut is:
+
+```text
+Meta+V
 ```
 
-See [Testing][docs:testing] for more information
+Press once to start recording.
 
-## Plugin configuration file
+Press again to stop recording and start transcription.
 
-The plugin configuration file is a [plugin.xml][file:plugin.xml] file located in the `src/main/resources/META-INF` directory. It provides general information about the plugin, its dependencies, extensions, and
-listeners.
+When Automatic Stop is enabled, recording can also stop automatically after the configured amount of silence.
 
-You can read more about this file in the [Plugin Configuration File][docs:plugin.xml] section of our documentation.
+The shortcut can be changed from the IDE Keymap settings.
 
-### Plugin ID and name
+### Push-to-Talk
 
-Generated plugin ID and name may require adjustment.
+Voice Input provides a Push-to-Talk control in the IDE status bar.
 
-These values are generated based on _Group ID_ and _Artifact ID_ provided in the IDE Plugin wizard. It is recommended to review `<id>` and `<name>` elements in the plugin.xml file, and adjust them if needed.
+Press and hold:
 
-Please note that Gradle properties `rootProject.name` and `project.group` don't need to match the `<id>` and `<name>` elements. There is no IntelliJ Platform-related reason they should as they serve different
-functions.
+```text
+🎙 Hold to talk
+```
 
-## Predefined Run/Debug configurations
+and speak while keeping the mouse button pressed.
 
-Within the default project structure, there is a `.run` directory provided containing predefined *Run/Debug configurations* that expose corresponding Gradle tasks:
+The status bar changes to:
 
-| Configuration name  | Description                                                                                                                                                                           |
-|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Run IDE with Plugin | Runs [`:runIde`][docs:intellij-platform-gradle-plugin-runIde] IntelliJ Platform Gradle Plugin task. Use the *Debug* icon for plugin debugging.                                        |
-| Run Tests           | Runs [`:check`][gradle:lifecycle-tasks] Gradle task.                                                                                                                                  |
-| Run Verifications   | Runs [`:verifyPlugin`][docs:intellij-platform-gradle-plugin-verifyPlugin] IntelliJ Platform Gradle Plugin task to check the plugin compatibility against the specified IntelliJ IDEs. |
+```text
+● REC 00:03
+```
 
-> [!NOTE]
-> You can find the logs from the running task in the `idea.log` tab.
+Release the mouse button to stop recording and start transcription.
 
-## Publishing the plugin
+Automatic Stop is intentionally disabled while using Push-to-Talk. Recording continues for as long as the microphone control is held.
 
-> [!TIP]
-> Make sure to follow all guidelines listed in [Publishing a Plugin][docs:publishing] to follow all recommended and required steps.
+## Automatic Stop
 
-Releasing a plugin to [JetBrains Marketplace](https://plugins.jetbrains.com) is a straightforward operation that uses the `publishPlugin` Gradle task provided by
-the [intellij-platform-gradle-plugin][docs:intellij-platform-gradle-plugin-docs].
+Voice Input can automatically stop recording after detecting a configurable period of silence.
 
-You can also upload the plugin to the [JetBrains Plugin Repository](https://plugins.jetbrains.com/plugin/upload) manually via UI.
+Silence detection uses an adaptive threshold based on the ambient noise level, allowing it to adjust to different microphone and room conditions.
 
-## Useful links
+Automatic Stop only becomes active after speech has been detected, so the recording will not stop simply because you wait before beginning to speak.
 
-- [IntelliJ Platform SDK Plugin SDK][docs]
-- [IntelliJ Platform Gradle Plugin Documentation][docs:intellij-platform-gradle-plugin-docs]
-- [IntelliJ Platform Explorer][jb:ipe]
-- [JetBrains Marketplace Quality Guidelines][jb:quality-guidelines]
-- [IntelliJ Platform UI Guidelines][jb:ui-guidelines]
-- [JetBrains Marketplace Paid Plugins][jb:paid-plugins]
-- [IntelliJ SDK Code Samples][gh:code-samples]
+Automatic Stop does not apply to Push-to-Talk mode.
 
-[docs]: https://plugins.jetbrains.com/docs/intellij
-[docs:plugin.xml]: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html?from=IJPluginReadmeFile
-[docs:publishing]: https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html?from=IJPluginReadmeFile
-[docs:intellij-platform-gradle-plugin-docs]: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html?from=IJPluginReadmeFile
-[docs:intellij-platform-gradle-plugin-runIde]: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html?from=IJPluginReadmeFile#runIde
-[docs:intellij-platform-gradle-plugin-verifyPlugin]: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html?from=IJPluginReadmeFile#verifyPlugin
-[docs:logo]: https://plugins.jetbrains.com/docs/intellij/plugin-icon-file.html?from=IJPluginReadmeFile
-[docs:target-version]: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html?from=IJPluginReadmeFile#target-versions
-[docs:testing]: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html?from=IJPluginReadmeFile#testing
+## Voice Activity Detection
 
-[file:build.gradle.kts]: ./build.gradle.kts
-[file:CHANGELOG.md]: ./CHANGELOG.md
-[file:gradle.properties]: ./gradle.properties
-[file:plugin.xml]: ./src/main/resources/META-INF/plugin.xml
+Voice Activity Detection can be enabled from the Voice Input settings.
 
-[gh:code-samples]: https://github.com/JetBrains/intellij-sdk-code-samples
+VAD can help Whisper distinguish speech from non-speech portions of a recording.
 
-[gradle:lifecycle-tasks]: https://docs.gradle.org/current/userguide/java_plugin.html#lifecycle_tasks
+It can be enabled or disabled independently from Automatic Stop.
 
-[jb:github]: https://github.com/JetBrains/.github/blob/main/profile/README.md
-[jb:forum]: https://platform.jetbrains.com/
-[jb:quality-guidelines]: https://plugins.jetbrains.com/docs/marketplace/quality-guidelines.html
-[jb:paid-plugins]: https://plugins.jetbrains.com/docs/marketplace/paid-plugins-marketplace.html
-[jb:ipe]: https://jb.gg/ipe
-[jb:ui-guidelines]: https://jetbrains.github.io/ui
+## Context-aware transcription
+
+Voice Input can build a dynamic Whisper prompt using the current editor.
+
+It collects useful identifiers from the surrounding source code and, when available, from the IntelliJ PSI structure.
+
+This can improve recognition of names such as:
+
+```text
+UserService
+CustomerRepository
+CreateCustomerRequest
+HttpStatus
+ResponseEntity
+```
+
+A custom technical prompt can also be configured manually.
+
+The context is used only as a local hint for Whisper and is not sent to an external service.
+
+## Transcription History
+
+Recent transcriptions are stored in the Voice Input History Tool Window.
+
+The history keeps the most recent transcriptions for the current IDE session.
+
+From the history you can:
+
+- copy a transcription to the clipboard;
+- insert it into the editor;
+- double-click an entry to insert it;
+- clear the history.
+
+The history is collected even if the Tool Window has never been opened.
+
+## Settings
+
+Voice Input settings are available under:
+
+```text
+Settings
+└── Tools
+    └── Voice Input
+```
+
+Available options include settings for:
+
+- Whisper model
+- transcription language
+- technical prompt
+- Voice Activity Detection
+- Automatic Stop
+- silence duration
+
+## Whisper models
+
+Voice Input supports local Whisper models.
+
+Different model sizes provide different trade-offs between transcription accuracy, processing speed and resource usage.
+
+For example, smaller models can provide faster transcription, while larger models can improve recognition in more difficult speech or language conditions.
+
+Model files are not stored in the Voice Input source repository.
+
+## Privacy
+
+Voice Input is designed around local speech processing.
+
+Microphone audio is recorded locally and transcription is performed by the bundled whisper.cpp runtime using a local Whisper model.
+
+Voice Input does not require an OpenAI API key and does not require sending recorded speech to a cloud speech-to-text API.
+
+Editor context used for technical prompting is also processed locally.
+
+## Current platform support
+
+The current release bundles the whisper.cpp runtime for:
+
+```text
+Linux x86-64
+```
+
+Other operating systems and architectures are not currently included in the distributed runtime.
+
+## IntelliJ compatibility
+
+Voice Input `0.3.0` has been built and verified against:
+
+```text
+IntelliJ IDEA 2026.2.1
+IU-262.9437.185
+```
+
+The IntelliJ Plugin Verifier reports the plugin as compatible with this IDE version.
+
+## Building from source
+
+Requirements:
+
+- JDK compatible with the IntelliJ Platform Gradle Plugin
+- Gradle wrapper included with the project
+
+Build the plugin with:
+
+```bash
+./gradlew clean buildPlugin
+```
+
+The resulting plugin distribution is created under:
+
+```text
+build/distributions/
+```
+
+Run the IntelliJ Plugin Verifier with:
+
+```bash
+./gradlew verifyPlugin
+```
+
+For local development, launch the sandbox IDE with:
+
+```bash
+./gradlew runIde
+```
+
+## Third-party components
+
+Voice Input includes native components from
+[whisper.cpp](https://github.com/ggml-org/whisper.cpp), including the Whisper command-line runtime and supporting GGML libraries.
+
+whisper.cpp is distributed under the MIT License.
+
+See:
+
+```text
+THIRD_PARTY_NOTICES.md
+```
+
+and the bundled whisper.cpp license for additional information.
+
+Whisper model files are separate from the Voice Input source code and remain subject to their respective licensing terms.
+
+## License
+
+Voice Input is released under the MIT License.
+
+See:
+
+```text
+LICENSE
+```
+
+for the full license text.
+
+Copyright © 2026 Federico Carpeggiani
