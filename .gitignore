@@ -1,4 +1,39 @@
-.gradle
-.idea
-.intellijPlatform
-build
+# Gradle
+.gradle/
+build/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+.intellijPlatform/
+
+# Kotlin / Java
+out/
+*.class
+
+# OS / temp
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*~
+
+# Voice Input temporary audio
+voice-input.wav
+benchmark.wav
+
+# Whisper models
+*.bin
+
+# Local runtime / test directories
+whisper-test/
+voice-input-runtime/
+
+# Download leftovers
+*.download
+*.part
+
+# Local environment
+.env
+.env.*
