@@ -1,0 +1,35 @@
+<idea-plugin>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+        <statusBarWidgetFactory
+                id="VoiceInputStatus"
+                implementation="it.federico.voiceinput.VoiceStatusWidgetFactory"/>
+
+        <applicationConfigurable
+                parentId="tools"
+                instance="it.federico.voiceinput.VoiceSettingsConfigurable"
+                id="it.federico.voiceinput.settings"
+                displayName="Voice Input"/>
+
+    </extensions>
+
+    <actions>
+
+        <action
+                id="VoiceInputAction"
+                class="it.federico.voiceinput.VoiceInputAction"
+                text="Voice Input"
+                description="Start or stop voice dictation">
+
+            <keyboard-shortcut
+                    keymap="$default"
+                    first-keystroke="meta V"/>
+
+        </action>
+
+    </actions>
+
+</idea-plugin>
