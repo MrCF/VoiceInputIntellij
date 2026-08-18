@@ -25,13 +25,38 @@ class AudioRecorder {
             1
 
         /*
-         * Livello RMS normalizzato sotto il quale
-         * consideriamo il segnale silenzioso.
-         *
-         * È volutamente abbastanza prudente.
+         * Soglia minima assoluta: evita che in ambienti
+         * quasi perfettamente silenziosi la soglia adattiva
+         * diventi troppo sensibile a piccoli fruscii.
          */
-        private const val SILENCE_RMS_THRESHOLD =
-            0.015
+        private const val MIN_SILENCE_RMS_THRESHOLD =
+            0.006
+
+        /*
+         * La soglia voce viene calcolata come:
+         *
+         * noiseFloor * NOISE_MULTIPLIER
+         *
+         * con un minimo pari a MIN_SILENCE_RMS_THRESHOLD.
+         */
+        private const val NOISE_MULTIPLIER =
+            2.8
+
+        /*
+         * Velocità con cui aggiorniamo il rumore di fondo
+         * quando il chunk sembra silenzioso.
+         *
+         * Valore basso = adattamento lento e stabile.
+         */
+        private const val NOISE_FLOOR_ALPHA =
+            0.08
+
+        /*
+         * Valore RMS iniziale prudente, usato finché
+         * non abbiamo raccolto abbastanza audio.
+         */
+        private const val INITIAL_NOISE_FLOOR =
+            0.004
 
         /*
          * Prima di considerare valida la voce vogliamo
@@ -205,6 +230,21 @@ class AudioRecorder {
         var automaticStop =
             false
 
+        /*
+         * Stima adattiva del rumore ambientale.
+         *
+         * Parte da un valore prudente e viene aggiornata
+         * lentamente solo sui chunk che sembrano silenziosi.
+         */
+        var noiseFloor =
+            INITIAL_NOISE_FLOOR
+
+        var silenceThreshold =
+            maxOf(
+                MIN_SILENCE_RMS_THRESHOLD,
+                noiseFloor * NOISE_MULTIPLIER
+            )
+
         try {
 
             while (
@@ -265,10 +305,10 @@ class AudioRecorder {
                         bytesRead
                     )
 
-                if (
-                    rms >=
-                    SILENCE_RMS_THRESHOLD
-                ) {
+                val isVoice =
+                    rms >= silenceThreshold
+
+                if (isVoice) {
 
                     accumulatedVoiceMs +=
                         chunkDurationMs
@@ -286,6 +326,33 @@ class AudioRecorder {
                     }
 
                 } else {
+
+                    /*
+                     * Aggiorniamo lentamente la stima del
+                     * rumore di fondo solo quando il chunk
+                     * sembra silenzioso.
+                     *
+                     * In questo modo il plugin si adatta
+                     * gradualmente a ventole, rumore della
+                     * stanza, microfoni più o meno sensibili,
+                     * senza inseguire la voce dell'utente.
+                     */
+                    noiseFloor =
+                        (
+                                noiseFloor *
+                                        (1.0 - NOISE_FLOOR_ALPHA)
+                                ) +
+                                (
+                                        rms *
+                                                NOISE_FLOOR_ALPHA
+                                        )
+
+                    silenceThreshold =
+                        maxOf(
+                            MIN_SILENCE_RMS_THRESHOLD,
+                            noiseFloor *
+                                    NOISE_MULTIPLIER
+                        )
 
                     /*
                      * Prima che venga rilevata almeno
