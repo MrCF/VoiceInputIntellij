@@ -29,7 +29,39 @@ class VoiceSettings :
             "Java, Spring Boot, REST, JPA, Optional, " +
                     "ResponseEntity, HttpStatus, " +
                     "PostMapping, GetMapping, PutMapping, " +
-                    "DeleteMapping, RequestBody, PathVariable"
+                    "DeleteMapping, RequestBody, PathVariable",
+
+        /*
+         * VOICE ACTIVITY DETECTION
+         */
+
+        var vadEnabled: Boolean =
+            false,
+
+        var vadThreshold: Double =
+            0.50,
+
+        var vadMinSpeechDurationMs: Int =
+            250,
+
+        var vadMinSilenceDurationMs: Int =
+            700,
+
+        var vadSpeechPadMs: Int =
+            250,
+
+        var vadSamplesOverlapSeconds: Double =
+            0.10,
+
+        /*
+         * AUTOMATIC STOP
+         */
+
+        var autoStopEnabled: Boolean =
+            false,
+
+        var autoStopSilenceSeconds: Double =
+            3.0
     )
 
     private var state =
@@ -39,12 +71,12 @@ class VoiceSettings :
         return state
     }
 
-    override fun loadState(state: State) {
+    override fun loadState(
+        state: State
+    ) {
 
         /*
-         * Se le impostazioni arrivano da una macchina diversa
-         * o da una configurazione precedente, evitiamo valori
-         * fuori dal range disponibile.
+         * THREADS
          */
         state.threads =
             state.threads.coerceIn(
@@ -52,13 +84,61 @@ class VoiceSettings :
                 ThreadConfig.maximum
             )
 
+        /*
+         * VAD
+         */
+        state.vadThreshold =
+            state.vadThreshold.coerceIn(
+                0.0,
+                1.0
+            )
+
+        state.vadMinSpeechDurationMs =
+            state.vadMinSpeechDurationMs
+                .coerceIn(
+                    0,
+                    10_000
+                )
+
+        state.vadMinSilenceDurationMs =
+            state.vadMinSilenceDurationMs
+                .coerceIn(
+                    0,
+                    10_000
+                )
+
+        state.vadSpeechPadMs =
+            state.vadSpeechPadMs
+                .coerceIn(
+                    0,
+                    5_000
+                )
+
+        state.vadSamplesOverlapSeconds =
+            state.vadSamplesOverlapSeconds
+                .coerceIn(
+                    0.0,
+                    5.0
+                )
+
+        /*
+         * AUTOMATIC STOP
+         */
+        state.autoStopSilenceSeconds =
+            state.autoStopSilenceSeconds
+                .coerceIn(
+                    1.5,
+                    10.0
+                )
+
         this.state =
             state
     }
 
     companion object {
 
-        fun getInstance(): VoiceSettings {
+        fun getInstance():
+                VoiceSettings {
 
             return ApplicationManager
                 .getApplication()

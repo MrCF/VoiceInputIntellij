@@ -34,6 +34,9 @@ class WhisperService {
         threads: Int
     ): String {
 
+        val settings =
+            VoiceSettings.getInstance().state
+
         val runtimeDirectory =
             WhisperRuntimeManager
                 .getRuntimeDirectory()
@@ -73,6 +76,44 @@ class WhisperService {
             command += listOf(
                 "--prompt",
                 prompt
+            )
+        }
+
+        /*
+         * Voice Activity Detection
+         */
+        if (settings.vadEnabled) {
+
+            if (!WhisperVadManager.isInstalled()) {
+                throw IllegalStateException(
+                    "Voice Activity Detection is enabled, " +
+                            "but the VAD model is not installed."
+                )
+            }
+
+            val vadModel =
+                WhisperVadManager.getModel()
+
+            command += listOf(
+                "--vad",
+
+                "-vm",
+                vadModel.absolutePath,
+
+                "-vt",
+                settings.vadThreshold.toString(),
+
+                "-vspd",
+                settings.vadMinSpeechDurationMs.toString(),
+
+                "-vsd",
+                settings.vadMinSilenceDurationMs.toString(),
+
+                "-vp",
+                settings.vadSpeechPadMs.toString(),
+
+                "-vo",
+                settings.vadSamplesOverlapSeconds.toString()
             )
         }
 

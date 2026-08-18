@@ -5,6 +5,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 
 class VoiceInputAction : AnAction() {
@@ -22,10 +23,32 @@ class VoiceInputAction : AnAction() {
 
         private var contextEditor: Editor? =
             null
+
+        /*
+         * Evita che stop manuale e auto-stop
+         * facciano partire due trascrizioni insieme.
+         */
+        @Volatile
+        private var transcribing =
+            false
     }
 
-    override fun actionPerformed(e: AnActionEvent) {
+    override fun actionPerformed(
+        e: AnActionEvent
+    ) {
 
+        /*
+         * Se Whisper sta già lavorando,
+         * ignoriamo ulteriori pressioni.
+         */
+        if (transcribing) {
+            return
+        }
+
+        /*
+         * PRIMA PRESSIONE:
+         * cattura target/editor e avvia registrazione.
+         */
         if (!recorder.isRecording) {
 
             target =
@@ -42,38 +65,58 @@ class VoiceInputAction : AnAction() {
                 return
             }
 
-            /*
-             * Se la shortcut viene premuta dentro un editor di codice,
-             * aggiorniamo l'ultimo editor conosciuto.
-             */
             val currentEditor =
-                e.getData(CommonDataKeys.EDITOR)
+                e.getData(
+                    CommonDataKeys.EDITOR
+                )
 
             if (currentEditor != null) {
-                LastEditorService.update(currentEditor)
+                LastEditorService.update(
+                    currentEditor
+                )
             }
 
-            /*
-             * Se siamo nell'editor usiamo quello corrente.
-             * Se siamo invece nella chat AI/Codex, usiamo l'ultimo
-             * editor di codice conosciuto.
-             */
             contextEditor =
                 currentEditor
                     ?: LastEditorService.get()
 
             try {
 
-                recorder.start()
+                val project =
+                    e.project
 
-                VoiceStatusState.setRecording()
+                recorder.start(
+
+                    onAutoStop = {
+
+                        /*
+                         * Il callback arriva dal thread
+                         * del recorder.
+                         *
+                         * Torniamo sul thread UI prima
+                         * di modificare stato/UI IntelliJ.
+                         */
+                        ApplicationManager
+                            .getApplication()
+                            .invokeLater {
+
+                                startTranscription(
+                                    project
+                                )
+                            }
+                    }
+                )
+
+                VoiceStatusState
+                    .setRecording()
 
             } catch (ex: Exception) {
 
                 target = null
                 contextEditor = null
 
-                VoiceStatusState.setReady()
+                VoiceStatusState
+                    .setReady()
 
                 Messages.showErrorDialog(
                     e.project,
@@ -86,6 +129,10 @@ class VoiceInputAction : AnAction() {
             return
         }
 
+        /*
+         * SECONDA PRESSIONE:
+         * stop manuale.
+         */
         try {
 
             recorder.stop()
@@ -95,7 +142,8 @@ class VoiceInputAction : AnAction() {
             target = null
             contextEditor = null
 
-            VoiceStatusState.setReady()
+            VoiceStatusState
+                .setReady()
 
             Messages.showErrorDialog(
                 e.project,
@@ -107,7 +155,26 @@ class VoiceInputAction : AnAction() {
             return
         }
 
-        VoiceStatusState.setTranscribing()
+        /*
+         * Dopo lo stop manuale avviamo
+         * lo stesso identico flusso usato
+         * dall'auto-stop.
+         */
+        startTranscription(
+            e.project
+        )
+    }
+
+    private fun startTranscription(
+        project: Project?
+    ) {
+
+        /*
+         * Protezione contro doppio avvio.
+         */
+        if (transcribing) {
+            return
+        }
 
         val capturedTarget =
             target
@@ -120,10 +187,17 @@ class VoiceInputAction : AnAction() {
 
         if (capturedTarget == null) {
 
-            VoiceStatusState.setReady()
+            VoiceStatusState
+                .setReady()
 
             return
         }
+
+        transcribing =
+            true
+
+        VoiceStatusState
+            .setTranscribing()
 
         val staticPrompt =
             VoiceSettings
@@ -132,11 +206,15 @@ class VoiceInputAction : AnAction() {
                 .prompt
 
         val whisperPrompt =
-            WhisperPromptService.buildPrompt(
-                capturedEditor,
-                staticPrompt
-            )
+            WhisperPromptService
+                .buildPrompt(
+                    capturedEditor,
+                    staticPrompt
+                )
 
+        /*
+         * Whisper gira in background.
+         */
         ApplicationManager
             .getApplication()
             .executeOnPooledThread {
@@ -155,14 +233,19 @@ class VoiceInputAction : AnAction() {
 
                             try {
 
-                                TextInsertionService.insert(
-                                    capturedTarget,
-                                    transcription
-                                )
+                                TextInsertionService
+                                    .insert(
+                                        capturedTarget,
+                                        transcription
+                                    )
 
                             } finally {
 
-                                VoiceStatusState.setReady()
+                                transcribing =
+                                    false
+
+                                VoiceStatusState
+                                    .setReady()
                             }
                         }
 
@@ -172,10 +255,14 @@ class VoiceInputAction : AnAction() {
                         .getApplication()
                         .invokeLater {
 
-                            VoiceStatusState.setReady()
+                            transcribing =
+                                false
+
+                            VoiceStatusState
+                                .setReady()
 
                             Messages.showErrorDialog(
-                                e.project,
+                                project,
                                 ex.message
                                     ?: "Errore durante la trascrizione.",
                                 "Voice Input"

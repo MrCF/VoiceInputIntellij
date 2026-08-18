@@ -11,6 +11,7 @@ import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
 import javax.swing.JButton
+import javax.swing.JCheckBox
 import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -116,6 +117,103 @@ class VoiceSettingsConfigurable :
         JBLabel("").apply {
             isVisible = false
         }
+
+    /*
+     * VOICE ACTIVITY DETECTION
+     */
+
+    private val vadEnabledCheckBox =
+        JCheckBox("Enable VAD")
+
+    private val vadStatusLabel =
+        JBLabel()
+
+    private val vadActionButton =
+        JButton()
+
+    private val removeVadButton =
+        JButton("Remove")
+
+    private val vadProgressBar =
+        JProgressBar(
+            0,
+            100
+        ).apply {
+            isStringPainted = true
+            isVisible = false
+        }
+
+    private val vadProgressLabel =
+        JBLabel("").apply {
+            isVisible = false
+        }
+
+    private val vadThresholdSpinner =
+        JSpinner(
+            SpinnerNumberModel(
+                0.50,
+                0.0,
+                1.0,
+                0.05
+            )
+        )
+
+    private val vadMinSpeechSpinner =
+        JSpinner(
+            SpinnerNumberModel(
+                250,
+                0,
+                10_000,
+                50
+            )
+        )
+
+    private val vadMinSilenceSpinner =
+        JSpinner(
+            SpinnerNumberModel(
+                700,
+                0,
+                10_000,
+                50
+            )
+        )
+
+    private val vadSpeechPadSpinner =
+        JSpinner(
+            SpinnerNumberModel(
+                250,
+                0,
+                5_000,
+                50
+            )
+        )
+
+    private val vadOverlapSpinner =
+        JSpinner(
+            SpinnerNumberModel(
+                0.10,
+                0.0,
+                5.0,
+                0.05
+            )
+        )
+
+    /*
+     * AUTOMATIC STOP
+     */
+
+    private val autoStopEnabledCheckBox =
+        JCheckBox("Stop recording after silence")
+
+    private val autoStopSilenceSpinner =
+        JSpinner(
+            SpinnerNumberModel(
+                3.0,
+                1.5,
+                10.0,
+                0.5
+            )
+        )
 
     /*
      * BENCHMARK
@@ -276,6 +374,29 @@ class VoiceSettingsConfigurable :
             removeSelectedModel()
         }
 
+        vadEnabledCheckBox.addActionListener {
+
+            updateVadControls()
+            updateAutoStopControls()
+            clearBenchmarkResult()
+        }
+
+        autoStopEnabledCheckBox.addActionListener {
+
+            updateAutoStopControls()
+            clearBenchmarkResult()
+        }
+
+        vadActionButton.addActionListener {
+
+            downloadVadModel()
+        }
+
+        removeVadButton.addActionListener {
+
+            removeVadModel()
+        }
+
         benchmarkButton.addActionListener {
 
             toggleBenchmark()
@@ -320,6 +441,88 @@ class VoiceSettingsConfigurable :
                 .addLabeledComponent(
                     JBLabel("Threads:"),
                     threadsPanel,
+                    1,
+                    false
+                )
+
+                .addSeparator()
+
+                .addComponent(
+                    JBLabel("<html><b>Voice Activity Detection</b></html>")
+                )
+
+                .addComponent(
+                    vadEnabledCheckBox
+                )
+
+                .addLabeledComponent(
+                    JBLabel("VAD model:"),
+                    createVadPanel(),
+                    1,
+                    false
+                )
+
+                .addLabeledComponent(
+                    JBLabel("Threshold:"),
+                    vadThresholdSpinner,
+                    1,
+                    false
+                )
+
+                .addLabeledComponent(
+                    JBLabel("Min speech:"),
+                    createValueWithUnitPanel(
+                        vadMinSpeechSpinner,
+                        "ms"
+                    ),
+                    1,
+                    false
+                )
+
+                .addLabeledComponent(
+                    JBLabel("Min silence:"),
+                    createValueWithUnitPanel(
+                        vadMinSilenceSpinner,
+                        "ms"
+                    ),
+                    1,
+                    false
+                )
+
+                .addLabeledComponent(
+                    JBLabel("Speech padding:"),
+                    createValueWithUnitPanel(
+                        vadSpeechPadSpinner,
+                        "ms"
+                    ),
+                    1,
+                    false
+                )
+
+                .addLabeledComponent(
+                    JBLabel("Overlap:"),
+                    createValueWithUnitPanel(
+                        vadOverlapSpinner,
+                        "s"
+                    ),
+                    1,
+                    false
+                )
+
+                .addComponent(
+                    JBLabel("<html><b>Automatic stop (silence detection)</b></html>")
+                )
+
+                .addComponent(
+                    autoStopEnabledCheckBox
+                )
+
+                .addLabeledComponent(
+                    JBLabel("Silence duration:"),
+                    createValueWithUnitPanel(
+                        autoStopSilenceSpinner,
+                        "s"
+                    ),
                     1,
                     false
                 )
@@ -457,6 +660,104 @@ class VoiceSettingsConfigurable :
     }
 
     /*
+     * VAD PANEL
+     */
+
+    private fun createVadPanel(): JPanel {
+
+        val container =
+            JPanel(
+                BorderLayout(
+                    10,
+                    5
+                )
+            )
+
+        val top =
+            JPanel(
+                BorderLayout(
+                    10,
+                    0
+                )
+            )
+
+        top.add(
+            vadStatusLabel,
+            BorderLayout.CENTER
+        )
+
+        val buttons =
+            JPanel(
+                FlowLayout(
+                    FlowLayout.RIGHT,
+                    5,
+                    0
+                )
+            )
+
+        buttons.add(
+            vadActionButton
+        )
+
+        buttons.add(
+            removeVadButton
+        )
+
+        top.add(
+            buttons,
+            BorderLayout.EAST
+        )
+
+        container.add(
+            top,
+            BorderLayout.NORTH
+        )
+
+        val progress =
+            JPanel(
+                BorderLayout(
+                    5,
+                    3
+                )
+            )
+
+        progress.add(
+            vadProgressLabel,
+            BorderLayout.NORTH
+        )
+
+        progress.add(
+            vadProgressBar,
+            BorderLayout.CENTER
+        )
+
+        container.add(
+            progress,
+            BorderLayout.CENTER
+        )
+
+        return container
+    }
+
+    private fun createValueWithUnitPanel(
+        component: JComponent,
+        unit: String
+    ): JPanel {
+
+        return JPanel(
+            FlowLayout(
+                FlowLayout.LEFT,
+                5,
+                0
+            )
+        ).apply {
+
+            add(component)
+            add(JBLabel(unit))
+        }
+    }
+
+    /*
      * CURRENT SELECTION
      */
 
@@ -538,6 +839,306 @@ class VoiceSettingsConfigurable :
 
             benchmarkButton.isEnabled =
                 false
+        }
+    }
+
+    /*
+     * VAD UI
+     */
+
+    private fun updateVadStatus() {
+
+        val installed =
+            WhisperVadManager.isInstalled()
+
+        if (installed) {
+
+            vadStatusLabel.text =
+                "Installed"
+
+            vadActionButton.text =
+                "Re-download"
+
+            removeVadButton.isEnabled =
+                true
+
+        } else {
+
+            vadStatusLabel.text =
+                "Not installed"
+
+            vadActionButton.text =
+                "Download"
+
+            removeVadButton.isEnabled =
+                false
+
+            if (vadEnabledCheckBox.isSelected) {
+                vadEnabledCheckBox.isSelected =
+                    false
+            }
+        }
+
+        vadEnabledCheckBox.isEnabled =
+            installed
+
+        updateVadControls()
+        updateAutoStopControls()
+    }
+
+    private fun updateVadControls() {
+
+        val enabled =
+            vadEnabledCheckBox.isSelected &&
+                    WhisperVadManager.isInstalled()
+
+        vadThresholdSpinner.isEnabled =
+            enabled
+
+        vadMinSpeechSpinner.isEnabled =
+            enabled
+
+        vadMinSilenceSpinner.isEnabled =
+            enabled
+
+        vadSpeechPadSpinner.isEnabled =
+            enabled
+
+        vadOverlapSpinner.isEnabled =
+            enabled
+    }
+
+    private fun updateAutoStopControls() {
+
+        autoStopEnabledCheckBox.isEnabled =
+            true
+
+        autoStopSilenceSpinner.isEnabled =
+            autoStopEnabledCheckBox.isSelected
+    }
+
+    private fun setVadDownloadingState(
+        downloading: Boolean
+    ) {
+
+        vadEnabledCheckBox.isEnabled =
+            !downloading &&
+                    WhisperVadManager.isInstalled()
+
+        vadActionButton.isEnabled =
+            !downloading
+
+        removeVadButton.isEnabled =
+            !downloading &&
+                    WhisperVadManager.isInstalled()
+
+        vadProgressBar.isVisible =
+            downloading
+
+        vadProgressLabel.isVisible =
+            downloading
+
+        if (!downloading) {
+
+            vadProgressBar.value =
+                0
+
+            vadProgressBar.string =
+                ""
+
+            vadProgressLabel.text =
+                ""
+        }
+
+        updateVadControls()
+        updateAutoStopControls()
+    }
+
+    private fun downloadVadModel() {
+
+        val project =
+            com.intellij.openapi.project
+                .ProjectManager
+                .getInstance()
+                .openProjects
+                .firstOrNull()
+
+        setVadDownloadingState(
+            true
+        )
+
+        vadStatusLabel.text =
+            "Downloading..."
+
+        vadProgressLabel.text =
+            "Preparing download..."
+
+        vadProgressBar.value =
+            0
+
+        vadProgressBar.string =
+            "0%"
+
+        object :
+            Task.Backgroundable(
+                project,
+                "Downloading Voice Input VAD Model",
+                true
+            ) {
+
+            override fun run(
+                indicator: ProgressIndicator
+            ) {
+
+                WhisperVadManager.download(
+                    object :
+                        ProgressIndicator
+                        by indicator {
+
+                        override fun setFraction(
+                            fraction: Double
+                        ) {
+
+                            indicator.fraction =
+                                fraction
+
+                            val percent =
+                                (
+                                        fraction *
+                                                100
+                                        )
+                                    .toInt()
+                                    .coerceIn(
+                                        0,
+                                        100
+                                    )
+
+                            SwingUtilities
+                                .invokeLater {
+
+                                    vadProgressBar.value =
+                                        percent
+
+                                    vadProgressBar.string =
+                                        "$percent%"
+                                }
+                        }
+
+                        override fun setText(
+                            text: String?
+                        ) {
+
+                            indicator.text =
+                                text
+
+                            SwingUtilities
+                                .invokeLater {
+
+                                    vadProgressLabel.text =
+                                        text ?: ""
+                                }
+                        }
+
+                        override fun setText2(
+                            text: String?
+                        ) {
+
+                            indicator.text2 =
+                                text
+
+                            SwingUtilities
+                                .invokeLater {
+
+                                    if (
+                                        !text
+                                            .isNullOrBlank()
+                                    ) {
+
+                                        vadProgressLabel.text =
+                                            text
+                                    }
+                                }
+                        }
+                    }
+                )
+            }
+
+            override fun onSuccess() {
+
+                setVadDownloadingState(
+                    false
+                )
+
+                updateVadStatus()
+
+                Messages.showInfoMessage(
+                    project,
+                    "VAD model installed successfully.",
+                    "Voice Input"
+                )
+            }
+
+            override fun onThrowable(
+                error: Throwable
+            ) {
+
+                setVadDownloadingState(
+                    false
+                )
+
+                updateVadStatus()
+
+                Messages.showErrorDialog(
+                    project,
+                    error.message
+                        ?: "Unable to download VAD model.",
+                    "Voice Input"
+                )
+            }
+
+            override fun onCancel() {
+
+                setVadDownloadingState(
+                    false
+                )
+
+                updateVadStatus()
+            }
+        }.queue()
+    }
+
+    private fun removeVadModel() {
+
+        val answer =
+            Messages.showYesNoDialog(
+                "Remove the local VAD model?",
+                "Voice Input",
+                Messages.getQuestionIcon()
+            )
+
+        if (
+            answer !=
+            Messages.YES
+        ) {
+            return
+        }
+
+        try {
+
+            WhisperVadManager.delete()
+
+            vadEnabledCheckBox.isSelected =
+                false
+
+            updateVadStatus()
+
+        } catch (ex: Exception) {
+
+            Messages.showErrorDialog(
+                ex.message
+                    ?: "Unable to remove VAD model.",
+                "Voice Input"
+            )
         }
     }
 
@@ -880,6 +1481,33 @@ class VoiceSettingsConfigurable :
 
         threadsSpinner.isEnabled =
             enabled
+
+        vadEnabledCheckBox.isEnabled =
+            enabled &&
+                    WhisperVadManager.isInstalled()
+
+        vadActionButton.isEnabled =
+            enabled
+
+        removeVadButton.isEnabled =
+            enabled &&
+                    WhisperVadManager.isInstalled()
+
+        autoStopEnabledCheckBox.isEnabled =
+            enabled
+
+        if (enabled) {
+            updateVadControls()
+            updateAutoStopControls()
+        } else {
+            vadThresholdSpinner.isEnabled = false
+            vadMinSpeechSpinner.isEnabled = false
+            vadMinSilenceSpinner.isEnabled = false
+            vadSpeechPadSpinner.isEnabled = false
+            vadOverlapSpinner.isEnabled = false
+            autoStopEnabledCheckBox.isEnabled = false
+            autoStopSilenceSpinner.isEnabled = false
+        }
 
         modelActionButton.isEnabled =
             enabled
@@ -1393,6 +2021,30 @@ class VoiceSettingsConfigurable :
                 selectedThreads() !=
                 settings.threads ||
 
+                vadEnabledCheckBox.isSelected !=
+                settings.vadEnabled ||
+
+                (vadThresholdSpinner.value as Number).toDouble() !=
+                settings.vadThreshold ||
+
+                (vadMinSpeechSpinner.value as Number).toInt() !=
+                settings.vadMinSpeechDurationMs ||
+
+                (vadMinSilenceSpinner.value as Number).toInt() !=
+                settings.vadMinSilenceDurationMs ||
+
+                (vadSpeechPadSpinner.value as Number).toInt() !=
+                settings.vadSpeechPadMs ||
+
+                (vadOverlapSpinner.value as Number).toDouble() !=
+                settings.vadSamplesOverlapSeconds ||
+
+                autoStopEnabledCheckBox.isSelected !=
+                settings.autoStopEnabled ||
+
+                (autoStopSilenceSpinner.value as Number).toDouble() !=
+                settings.autoStopSilenceSeconds ||
+
                 promptArea.text
                     .trim() !=
                 settings.prompt
@@ -1413,6 +2065,37 @@ class VoiceSettingsConfigurable :
 
         settings.threads =
             selectedThreads()
+
+        settings.vadEnabled =
+            vadEnabledCheckBox.isSelected &&
+                    WhisperVadManager.isInstalled()
+
+        settings.vadThreshold =
+            (vadThresholdSpinner.value as Number)
+                .toDouble()
+
+        settings.vadMinSpeechDurationMs =
+            (vadMinSpeechSpinner.value as Number)
+                .toInt()
+
+        settings.vadMinSilenceDurationMs =
+            (vadMinSilenceSpinner.value as Number)
+                .toInt()
+
+        settings.vadSpeechPadMs =
+            (vadSpeechPadSpinner.value as Number)
+                .toInt()
+
+        settings.vadSamplesOverlapSeconds =
+            (vadOverlapSpinner.value as Number)
+                .toDouble()
+
+        settings.autoStopEnabled =
+            autoStopEnabledCheckBox.isSelected
+
+        settings.autoStopSilenceSeconds =
+            (autoStopSilenceSpinner.value as Number)
+                .toDouble()
 
         settings.prompt =
             promptArea.text.trim()
@@ -1454,6 +2137,35 @@ class VoiceSettingsConfigurable :
                     ThreadConfig.maximum
                 )
 
+        vadEnabledCheckBox.isSelected =
+            settings.vadEnabled &&
+                    WhisperVadManager.isInstalled()
+
+        vadThresholdSpinner.value =
+            settings.vadThreshold
+
+        vadMinSpeechSpinner.value =
+            settings.vadMinSpeechDurationMs
+
+        vadMinSilenceSpinner.value =
+            settings.vadMinSilenceDurationMs
+
+        vadSpeechPadSpinner.value =
+            settings.vadSpeechPadMs
+
+        vadOverlapSpinner.value =
+            settings.vadSamplesOverlapSeconds
+
+        autoStopEnabledCheckBox.isSelected =
+            settings.autoStopEnabled
+
+        autoStopSilenceSpinner.value =
+            settings.autoStopSilenceSeconds
+                .coerceIn(
+                    1.5,
+                    10.0
+                )
+
         promptArea.text =
             settings.prompt
 
@@ -1462,6 +2174,8 @@ class VoiceSettingsConfigurable :
 
         updateModelName()
         updateModelStatus()
+        updateVadStatus()
+        updateAutoStopControls()
         updateBenchmarkSentence()
     }
 
