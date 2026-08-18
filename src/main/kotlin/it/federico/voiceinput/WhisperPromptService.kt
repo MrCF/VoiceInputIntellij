@@ -48,29 +48,106 @@ object WhisperPromptService {
                 terms += it
             }
 
-        val dynamicPrompt =
-            terms.joinToString(", ")
+        /*
+         * IMPORTANTE:
+         *
+         * Non separiamo più i termini con virgole.
+         *
+         * L'initial prompt di Whisper non funziona
+         * semplicemente come un dizionario: può
+         * influenzare anche lo stile e la punteggiatura
+         * della trascrizione.
+         *
+         * Una lunga lista del tipo:
+         *
+         * CustomerController, CustomerService,
+         * PostMapping, ResponseEntity, ...
+         *
+         * può quindi favorire l'inserimento di virgole
+         * anche nel testo riconosciuto.
+         *
+         * Usiamo invece una forma più naturale.
+         */
+        val dynamicTerms =
+            terms.joinToString(" ")
 
         return buildString {
 
+            /*
+             * Prompt configurato manualmente
+             * dall'utente.
+             */
             if (staticPrompt.isNotBlank()) {
+
                 append(
-                    staticPrompt.trim()
+                    "Technical vocabulary: "
                 )
+
+                append(
+                    normalizeStaticPrompt(
+                        staticPrompt
+                    )
+                )
+
+                append(".")
             }
 
-            if (dynamicPrompt.isNotBlank()) {
+            /*
+             * Termini recuperati automaticamente
+             * dal contesto dell'editor.
+             */
+            if (dynamicTerms.isNotBlank()) {
 
                 if (isNotEmpty()) {
-                    append(", ")
+                    append(" ")
                 }
 
-                append(dynamicPrompt)
+                append(
+                    "Project terms: "
+                )
+
+                append(
+                    dynamicTerms
+                )
+
+                append(".")
             }
 
         }.take(
             MAX_PROMPT_LENGTH
         )
+    }
+
+    /**
+     * Trasforma il prompt tecnico configurato
+     * dall'utente in una sequenza più neutra.
+     *
+     * Per esempio:
+     *
+     * Java, Spring Boot, ResponseEntity, PostMapping
+     *
+     * diventa:
+     *
+     * Java Spring Boot ResponseEntity PostMapping
+     */
+    private fun normalizeStaticPrompt(
+        prompt: String
+    ): String {
+
+        return prompt
+            .replace(
+                ",",
+                " "
+            )
+            .replace(
+                ";",
+                " "
+            )
+            .replace(
+                Regex("\\s+"),
+                " "
+            )
+            .trim()
     }
 
     private fun collectNearbyTextTerms(
@@ -114,17 +191,23 @@ object WhisperPromptService {
             )
 
         return technicalIdentifier
-            .findAll(nearbyText)
+            .findAll(
+                nearbyText
+            )
             .map {
                 it.value
             }
             .filter {
-                isInteresting(it)
+                isInteresting(
+                    it
+                )
             }
             .distinct()
             .sortedWith(
                 compareByDescending<String> {
-                    score(it)
+                    score(
+                        it
+                    )
                 }.thenBy {
                     it.lowercase()
                 }
@@ -160,7 +243,11 @@ object WhisperPromptService {
             return true
         }
 
-        if (term.contains("_")) {
+        if (
+            term.contains(
+                "_"
+            )
+        ) {
             return true
         }
 
@@ -172,69 +259,98 @@ object WhisperPromptService {
         term: String
     ): Int {
 
-        var score = 0
+        var score =
+            0
 
         if (
             term.any {
                 it.isUpperCase()
             }
         ) {
-            score += 10
+            score +=
+                10
         }
 
-        if (term.contains("_")) {
-            score += 5
+        if (
+            term.contains(
+                "_"
+            )
+        ) {
+            score +=
+                5
         }
 
         when {
 
             term.endsWith(
                 "Controller"
-            ) -> score += 40
+            ) ->
+                score +=
+                    40
 
             term.endsWith(
                 "Service"
-            ) -> score += 40
+            ) ->
+                score +=
+                    40
 
             term.endsWith(
                 "Repository"
-            ) -> score += 40
+            ) ->
+                score +=
+                    40
 
             term.endsWith(
                 "Request"
-            ) -> score += 35
+            ) ->
+                score +=
+                    35
 
             term.endsWith(
                 "Response"
-            ) -> score += 35
+            ) ->
+                score +=
+                    35
 
             term.endsWith(
                 "Dto",
                 ignoreCase = true
-            ) -> score += 30
+            ) ->
+                score +=
+                    30
         }
 
         when {
 
             term.startsWith(
                 "find"
-            ) -> score += 20
+            ) ->
+                score +=
+                    20
 
             term.startsWith(
                 "create"
-            ) -> score += 20
+            ) ->
+                score +=
+                    20
 
             term.startsWith(
                 "save"
-            ) -> score += 20
+            ) ->
+                score +=
+                    20
 
             term.startsWith(
                 "update"
-            ) -> score += 20
+            ) ->
+                score +=
+                    20
 
             term.startsWith(
                 "delete"
-            ) -> score += 20
+            ) ->
+                score +=
+                    20
         }
 
         return score

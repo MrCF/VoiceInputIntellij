@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "it.federico.voiceinput"
-version = "0.1.0"
+version = "0.3.0"
 
 dependencies {
     testImplementation(libs.junit)
@@ -52,12 +52,14 @@ intellijPlatform {
 
         changeNotes = """
             <ul>
-                <li>Initial 0.1.0 release</li>
-                <li>Local Whisper speech-to-text</li>
-                <li>Small, Medium and Large v3 Turbo model support</li>
-                <li>Guided CPU thread configuration</li>
-                <li>Natural and technical speech benchmark</li>
-                <li>Project-aware technical prompt generation</li>
+                <li>Added recording overlay with live REC timer</li>
+                <li>Added in-memory transcription history</li>
+                <li>Added Copy, Insert and Clear actions to Voice Input History</li>
+                <li>Added graphical Push-to-Talk control in the status bar</li>
+                <li>Push-to-Talk ignores automatic silence stop while held</li>
+                <li>Improved automatic stop with adaptive background-noise detection</li>
+                <li>Improved Whisper technical prompting to avoid excessive punctuation</li>
+                <li>Added Voice Activity Detection support</li>
             </ul>
         """.trimIndent()
 

@@ -25,55 +25,42 @@ class AudioRecorder {
             1
 
         /*
-         * Soglia minima assoluta: evita che in ambienti
-         * quasi perfettamente silenziosi la soglia adattiva
-         * diventi troppo sensibile a piccoli fruscii.
+         * Soglia minima assoluta.
          */
         private const val MIN_SILENCE_RMS_THRESHOLD =
             0.006
 
         /*
-         * La soglia voce viene calcolata come:
+         * Soglia dinamica:
          *
          * noiseFloor * NOISE_MULTIPLIER
-         *
-         * con un minimo pari a MIN_SILENCE_RMS_THRESHOLD.
          */
         private const val NOISE_MULTIPLIER =
             2.8
 
         /*
-         * Velocità con cui aggiorniamo il rumore di fondo
-         * quando il chunk sembra silenzioso.
-         *
-         * Valore basso = adattamento lento e stabile.
+         * Velocità di adattamento
+         * al rumore ambientale.
          */
         private const val NOISE_FLOOR_ALPHA =
             0.08
 
-        /*
-         * Valore RMS iniziale prudente, usato finché
-         * non abbiamo raccolto abbastanza audio.
-         */
         private const val INITIAL_NOISE_FLOOR =
             0.004
 
         /*
-         * Prima di considerare valida la voce vogliamo
-         * almeno un po' di parlato reale.
-         *
-         * Evita che un piccolo rumore faccia partire
-         * immediatamente il timer del silenzio.
+         * Prima di considerare rilevata
+         * la voce richiediamo almeno
+         * 200 ms di segnale.
          */
         private const val MIN_VOICE_DURATION_MS =
             200L
 
         /*
-         * Leggiamo circa 100 ms di audio per volta.
+         * Circa 100 ms di audio:
          *
-         * 16000 sample/s
+         * 16000 sample/sec
          * 2 byte/sample
-         * 100 ms = 3200 byte
          */
         private const val BUFFER_SIZE =
             3200
@@ -89,11 +76,13 @@ class AudioRecorder {
         )
 
     @Volatile
-    private var line: TargetDataLine? =
+    private var line:
+            TargetDataLine? =
         null
 
     @Volatile
-    private var recordingThread: Thread? =
+    private var recordingThread:
+            Thread? =
         null
 
     @Volatile
@@ -106,24 +95,32 @@ class AudioRecorder {
 
     val outputFile =
         File(
-            System.getProperty("java.io.tmpdir"),
+            System.getProperty(
+                "java.io.tmpdir"
+            ),
             "voice-input.wav"
         )
 
     val isRecording: Boolean
-        get() = recording
+        get() =
+            recording
 
     /**
-     * Avvia la registrazione.
+     * @param autoStopAllowed
      *
-     * onAutoStop viene chiamato soltanto quando la
-     * registrazione termina automaticamente per silenzio.
+     * true:
+     *   normale registrazione Meta+V.
+     *   L'Automatic Stop può intervenire.
      *
-     * Non viene chiamato quando l'utente preme nuovamente
-     * Meta+V e quindi usa stop() manualmente.
+     * false:
+     *   modalità Push-To-Talk.
+     *   La registrazione termina solamente
+     *   quando viene richiesto esplicitamente
+     *   lo stop.
      */
     @Synchronized
     fun start(
+        autoStopAllowed: Boolean = true,
         onAutoStop: (() -> Unit)? = null
     ) {
 
@@ -138,10 +135,14 @@ class AudioRecorder {
             )
 
         val currentLine =
-            AudioSystem.getLine(info)
+            AudioSystem
+                .getLine(info)
                     as TargetDataLine
 
-        currentLine.open(format)
+        currentLine.open(
+            format
+        )
+
         currentLine.start()
 
         line =
@@ -154,19 +155,21 @@ class AudioRecorder {
             true
 
         /*
-         * Facciamo uno snapshot delle Settings.
-         *
-         * Se l'utente cambia le Settings durante una
-         * registrazione, i nuovi valori saranno usati
-         * dalla registrazione successiva.
+         * Snapshot delle Settings.
          */
         val settings =
             VoiceSettings
                 .getInstance()
                 .state
 
+        /*
+         * Punto fondamentale:
+         *
+         * il PTT passa autoStopAllowed = false.
+         */
         val autoStopEnabled =
-            settings.autoStopEnabled
+            autoStopAllowed &&
+                    settings.autoStopEnabled
 
         val autoStopSilenceNanos =
             (
@@ -232,9 +235,6 @@ class AudioRecorder {
 
         /*
          * Stima adattiva del rumore ambientale.
-         *
-         * Parte da un valore prudente e viene aggiornata
-         * lentamente solo sui chunk che sembrano silenziosi.
          */
         var noiseFloor =
             INITIAL_NOISE_FLOOR
@@ -242,7 +242,8 @@ class AudioRecorder {
         var silenceThreshold =
             maxOf(
                 MIN_SILENCE_RMS_THRESHOLD,
-                noiseFloor * NOISE_MULTIPLIER
+                noiseFloor *
+                        NOISE_MULTIPLIER
             )
 
         try {
@@ -263,13 +264,6 @@ class AudioRecorder {
 
                     } catch (ex: Exception) {
 
-                        /*
-                         * Quando stop() chiude la linea,
-                         * una read() in corso può terminare
-                         * con un'eccezione.
-                         *
-                         * È normale durante lo stop manuale.
-                         */
                         if (stopRequested) {
                             break
                         }
@@ -281,12 +275,20 @@ class AudioRecorder {
                     continue
                 }
 
+                /*
+                 * Tutto l'audio viene comunque
+                 * scritto nel WAV.
+                 */
                 rawAudio.write(
                     buffer,
                     0,
                     bytesRead
                 )
 
+                /*
+                 * In PTT arriviamo sempre qui
+                 * perché autoStopEnabled = false.
+                 */
                 if (!autoStopEnabled) {
                     continue
                 }
@@ -306,7 +308,8 @@ class AudioRecorder {
                     )
 
                 val isVoice =
-                    rms >= silenceThreshold
+                    rms >=
+                            silenceThreshold
 
                 if (isVoice) {
 
@@ -328,19 +331,16 @@ class AudioRecorder {
                 } else {
 
                     /*
-                     * Aggiorniamo lentamente la stima del
-                     * rumore di fondo solo quando il chunk
-                     * sembra silenzioso.
-                     *
-                     * In questo modo il plugin si adatta
-                     * gradualmente a ventole, rumore della
-                     * stanza, microfoni più o meno sensibili,
-                     * senza inseguire la voce dell'utente.
+                     * Aggiornamento lento del
+                     * rumore ambientale.
                      */
                     noiseFloor =
                         (
                                 noiseFloor *
-                                        (1.0 - NOISE_FLOOR_ALPHA)
+                                        (
+                                                1.0 -
+                                                        NOISE_FLOOR_ALPHA
+                                                )
                                 ) +
                                 (
                                         rms *
@@ -355,13 +355,8 @@ class AudioRecorder {
                         )
 
                     /*
-                     * Prima che venga rilevata almeno
-                     * un po' di voce non facciamo partire
-                     * l'auto-stop.
-                     *
-                     * Puoi quindi premere Meta+V,
-                     * aspettare qualche secondo e poi
-                     * iniziare a parlare.
+                     * Non fermiamo la registrazione
+                     * prima che l'utente abbia parlato.
                      */
                     if (!speechDetected) {
                         continue
@@ -405,8 +400,7 @@ class AudioRecorder {
             }
 
             /*
-             * Scriviamo il WAV soltanto quando abbiamo
-             * terminato di acquisire i campioni.
+             * Creiamo il WAV completo.
              */
             writeWaveFile(
                 rawAudio.toByteArray()
@@ -431,11 +425,10 @@ class AudioRecorder {
             }
 
             /*
-             * Il callback parte soltanto per lo stop
-             * automatico.
+             * Callback soltanto quando
+             * è stato davvero l'Automatic Stop.
              *
-             * A questo punto voice-input.wav è già
-             * completo e pronto per Whisper.
+             * In PTT non può verificarsi.
              */
             if (
                 automaticStop &&
@@ -449,7 +442,11 @@ class AudioRecorder {
     }
 
     /**
-     * Stop manuale, usato dalla seconda pressione di Meta+V.
+     * Stop esplicito.
+     *
+     * Viene utilizzato sia dalla seconda
+     * pressione di Meta+V sia dal rilascio
+     * del pulsante PTT.
      */
     fun stop() {
 
@@ -491,9 +488,6 @@ class AudioRecorder {
         } catch (_: Exception) {
         }
 
-        /*
-         * Non facciamo mai join sul thread stesso.
-         */
         if (
             currentThread != null &&
             currentThread !==
@@ -527,10 +521,6 @@ class AudioRecorder {
         }
     }
 
-    /**
-     * Calcola RMS normalizzato 0..1
-     * da PCM signed 16-bit little endian.
-     */
     private fun calculateRms(
         buffer: ByteArray,
         length: Int

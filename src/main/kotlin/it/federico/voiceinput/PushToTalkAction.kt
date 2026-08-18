@@ -3,15 +3,16 @@ package it.federico.voiceinput
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 
-class VoiceInputAction :
+class PushToTalkAction :
     AnAction() {
 
     override fun actionPerformed(
         e: AnActionEvent
     ) {
 
-        VoiceInputController.toggle(
-            e
-        )
+        VoiceInputController
+            .startPushToTalk(
+                e
+            )
     }
 }

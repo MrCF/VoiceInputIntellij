@@ -14,6 +14,10 @@
                 id="it.federico.voiceinput.settings"
                 displayName="Voice Input"/>
 
+        <toolWindow
+                id="Voice Input History"
+                anchor="right"
+                factoryClass="it.federico.voiceinput.VoiceHistoryToolWindowFactory"/>
     </extensions>
 
     <actions>
@@ -29,6 +33,12 @@
                     first-keystroke="meta V"/>
 
         </action>
+
+        <action
+                id="VoiceInputPushToTalkAction"
+                class="it.federico.voiceinput.PushToTalkAction"
+                text="Voice Input: Push to Talk"
+                description="Hold the microphone button to dictate"/>
 
     </actions>
 
