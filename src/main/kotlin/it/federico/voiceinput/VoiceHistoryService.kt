@@ -1,5 +1,6 @@
 package it.federico.voiceinput
 
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import java.time.LocalDateTime
@@ -7,7 +8,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 @Service(Service.Level.APP)
 class VoiceHistoryService :
-    VoiceSessionService.Listener {
+    VoiceSessionService.Listener,
+    Disposable {
 
     companion object {
 
@@ -63,13 +65,25 @@ class VoiceHistoryService :
     }
 
     fun clear() {
-
-        synchronized(entries) {
-
+        val changed = synchronized(entries) {
+            val wasNotEmpty = entries.isNotEmpty()
             entries.clear()
+            wasNotEmpty
         }
 
-        notifyListeners()
+        if (changed) {
+            notifyListeners()
+        }
+    }
+
+    fun remove(entry: Entry) {
+        val changed = synchronized(entries) {
+            entries.remove(entry)
+        }
+
+        if (changed) {
+            notifyListeners()
+        }
     }
 
     fun addListener(
@@ -160,5 +174,10 @@ class VoiceHistoryService :
                  */
             }
         }
+    }
+
+    override fun dispose() {
+        VoiceSessionService.removeListener(this)
+        listeners.clear()
     }
 }

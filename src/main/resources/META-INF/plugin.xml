@@ -1,5 +1,7 @@
 <idea-plugin>
 
+    <resource-bundle>messages.VoiceInputBundle</resource-bundle>
+
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">

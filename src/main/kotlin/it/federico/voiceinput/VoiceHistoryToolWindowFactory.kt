@@ -1,8 +1,16 @@
 package it.federico.voiceinput
 
+import com.intellij.icons.AllIcons
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.ide.CopyPasteManager
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.components.JBList
@@ -10,384 +18,224 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.content.ContentFactory
 import java.awt.BorderLayout
 import java.awt.Component
-import java.awt.FlowLayout
 import java.awt.datatransfer.StringSelection
+import java.awt.event.KeyEvent
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import javax.swing.DefaultListCellRenderer
-import javax.swing.DefaultListModel
-import javax.swing.JButton
-import javax.swing.JList
-import javax.swing.JPanel
-import javax.swing.ListSelectionModel
-import javax.swing.SwingUtilities
+import javax.swing.*
 
-class VoiceHistoryToolWindowFactory :
-    ToolWindowFactory {
+class VoiceHistoryToolWindowFactory : ToolWindowFactory {
 
-    override fun createToolWindowContent(
-        project: Project,
-        toolWindow: ToolWindow
-    ) {
-
-        val panel =
-            VoiceHistoryPanel(
-                project
-            )
-
-        val content =
-            ContentFactory
-                .getInstance()
-                .createContent(
-                    panel,
-                    "",
-                    false
-                )
-
-        toolWindow
-            .contentManager
-            .addContent(
-                content
-            )
+    override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
+        val panel = VoiceHistoryPanel(project)
+        val content = ContentFactory.getInstance().createContent(panel, "", false)
+        content.setDisposer(panel)
+        toolWindow.contentManager.addContent(content)
     }
 }
 
 private class VoiceHistoryPanel(
     private val project: Project
-) :
-    JPanel(
-        BorderLayout()
-    ),
-    VoiceHistoryService.Listener {
+) : JPanel(BorderLayout()), VoiceHistoryService.Listener, Disposable {
 
-    private val historyService =
-        VoiceHistoryService
-            .getInstance()
+    companion object {
+        private const val ACTION_PLACE = "VoiceInputHistory"
+        private const val PREVIEW_LIMIT = 100
+    }
 
-    private val model =
-        DefaultListModel<
-                VoiceHistoryService.Entry
-                >()
+    private val historyService = VoiceHistoryService.getInstance()
+    private val model = DefaultListModel<VoiceHistoryService.Entry>()
+    private val list = JBList(model)
+    private var disposed = false
 
-    private val list =
-        JBList(model)
+    private val insertAction = object : DumbAwareAction(
+        VoiceInputBundle.message("history.action.insert"),
+        VoiceInputBundle.message("history.action.insert.description"),
+        AllIcons.Actions.MenuPaste
+    ) {
+        override fun actionPerformed(e: AnActionEvent) = insertSelected()
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = list.selectedValue != null && currentEditorIsWritable()
+        }
+    }
 
-    private val insertButton =
-        JButton("Insert")
+    private val copyAction = object : DumbAwareAction(
+        VoiceInputBundle.message("history.action.copy"),
+        VoiceInputBundle.message("history.action.copy.description"),
+        AllIcons.Actions.Copy
+    ) {
+        override fun actionPerformed(e: AnActionEvent) = copySelected()
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = list.selectedValue != null
+        }
+    }
 
-    private val copyButton =
-        JButton("Copy")
+    private val removeAction = object : DumbAwareAction(
+        VoiceInputBundle.message("history.action.remove"),
+        VoiceInputBundle.message("history.action.remove.description"),
+        AllIcons.Actions.GC
+    ) {
+        override fun actionPerformed(e: AnActionEvent) = removeSelected()
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = list.selectedValue != null
+        }
+    }
 
-    private val clearButton =
-        JButton("Clear")
-
-    private val timeFormatter =
-        DateTimeFormatter.ofPattern(
-            "HH:mm"
-        )
+    private val clearAction = object : DumbAwareAction(
+        VoiceInputBundle.message("history.action.clear"),
+        VoiceInputBundle.message("history.action.clear.description"),
+        AllIcons.Actions.DeleteTag
+    ) {
+        override fun actionPerformed(e: AnActionEvent) = clearHistory()
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = !model.isEmpty
+        }
+    }
 
     init {
+        configureList()
+        val actions = DefaultActionGroup(insertAction, copyAction, removeAction, clearAction)
+        val toolbar = ActionManager.getInstance().createActionToolbar(ACTION_PLACE, actions, true)
+        toolbar.targetComponent = list
 
-        list.selectionMode =
-            ListSelectionModel
-                .SINGLE_SELECTION
+        add(toolbar.component, BorderLayout.NORTH)
+        add(JBScrollPane(list), BorderLayout.CENTER)
 
-        list.cellRenderer =
-            HistoryCellRenderer(
-                timeFormatter
-            )
-
-        list.addListSelectionListener {
-
-            updateButtons()
-        }
-
-        /*
-         * Doppio click = Insert
-         */
-        list.addMouseListener(
-            object :
-                java.awt.event.MouseAdapter() {
-
-                override fun mouseClicked(
-                    event:
-                    java.awt.event.MouseEvent
-                ) {
-
-                    if (
-                        event.clickCount == 2 &&
-                        SwingUtilities
-                            .isLeftMouseButton(
-                                event
-                            )
-                    ) {
-
-                        insertSelected()
-                    }
-                }
-            }
-        )
-
-        insertButton.addActionListener {
-
-            insertSelected()
-        }
-
-        copyButton.addActionListener {
-
-            copySelected()
-        }
-
-        clearButton.addActionListener {
-
-            clearHistory()
-        }
-
-        val buttons =
-            JPanel(
-                FlowLayout(
-                    FlowLayout.LEFT
-                )
-            )
-
-        buttons.add(
-            insertButton
-        )
-
-        buttons.add(
-            copyButton
-        )
-
-        buttons.add(
-            clearButton
-        )
-
-        add(
-            JBScrollPane(
-                list
-            ),
-            BorderLayout.CENTER
-        )
-
-        add(
-            buttons,
-            BorderLayout.SOUTH
-        )
-
-        /*
-         * Da questo momento la Tool Window
-         * viene aggiornata quando cambia
-         * la History.
-         */
-        historyService.addListener(
-            this
-        )
-
+        registerShortcuts()
+        historyService.addListener(this)
         reload()
     }
 
-    override fun historyChanged() {
-
-        ApplicationManager
-            .getApplication()
-            .invokeLater {
-
-                reload()
+    private fun configureList() {
+        list.selectionMode = ListSelectionModel.SINGLE_SELECTION
+        list.cellRenderer = HistoryCellRenderer(
+            DateTimeFormatter.ofPattern("HH:mm"),
+            DateTimeFormatter.ofPattern("dd MMM, HH:mm"),
+            PREVIEW_LIMIT
+        )
+        list.emptyText.text = VoiceInputBundle.message("history.empty")
+        list.emptyText.appendSecondaryText(
+            VoiceInputBundle.message("history.empty.description"),
+            com.intellij.ui.SimpleTextAttributes.GRAYED_ATTRIBUTES,
+            null
+        )
+        list.addListSelectionListener { updateActions() }
+        list.addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(event: MouseEvent) {
+                if (event.clickCount == 2 && SwingUtilities.isLeftMouseButton(event)) insertSelected()
             }
+        })
+    }
+
+    private fun registerShortcuts() {
+        insertAction.registerCustomShortcutSet(CommonShortcuts.ENTER, list, this)
+        copyAction.registerCustomShortcutSet(CommonShortcuts.getCopy(), list, this)
+        removeAction.registerCustomShortcutSet(
+            ShortcutSet { arrayOf(KeyboardShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), null)) },
+            list,
+            this
+        )
+    }
+
+    override fun historyChanged() {
+        ApplicationManager.getApplication().invokeLater {
+            if (!disposed && !project.isDisposed) reload()
+        }
     }
 
     private fun reload() {
-
-        val selected =
-            list.selectedValue
-
-        val entries =
-            historyService
-                .getEntries()
-
+        val selected = list.selectedValue
+        val entries = historyService.getEntries()
         model.clear()
-
-        entries.forEach {
-
-            model.addElement(
-                it
-            )
+        model.addAll(entries)
+        selected?.let { previous ->
+            entries.indexOf(previous).takeIf { it >= 0 }?.let { list.selectedIndex = it }
         }
-
-        /*
-         * Se possibile manteniamo
-         * la selezione precedente.
-         */
-        if (selected != null) {
-
-            val index =
-                entries.indexOf(
-                    selected
-                )
-
-            if (index >= 0) {
-
-                list.selectedIndex =
-                    index
-            }
-        }
-
-        updateButtons()
+        updateActions()
     }
 
-    private fun updateButtons() {
-
-        val selected =
-            list.selectedValue !=
-                    null
-
-        insertButton.isEnabled =
-            selected
-
-        copyButton.isEnabled =
-            selected
-
-        clearButton.isEnabled =
-            model.size > 0
+    private fun updateActions() {
+        insertAction.templatePresentation.isEnabled = list.selectedValue != null && currentEditorIsWritable()
+        copyAction.templatePresentation.isEnabled = list.selectedValue != null
+        removeAction.templatePresentation.isEnabled = list.selectedValue != null
+        clearAction.templatePresentation.isEnabled = !model.isEmpty
     }
 
     private fun copySelected() {
-
-        val entry =
-            list.selectedValue
-                ?: return
-
-        CopyPasteManager
-            .getInstance()
-            .setContents(
-                StringSelection(
-                    entry.text
-                )
-            )
+        val entry = list.selectedValue ?: return
+        CopyPasteManager.getInstance().setContents(StringSelection(entry.text))
     }
 
     private fun insertSelected() {
+        val entry = list.selectedValue ?: return
+        val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return
+        if (editor.isDisposed || !FileDocumentManager.getInstance().requestWriting(editor.document, project)) return
 
-        val entry =
-            list.selectedValue
-                ?: return
-
-        /*
-         * Per ora Insert opera
-         * sull'ultimo editor IntelliJ.
-         */
-        val editor =
-            LastEditorService.get()
-                ?: return
-
-        if (editor.isDisposed) {
-            return
+        WriteCommandAction.runWriteCommandAction(project) {
+            editor.caretModel.allCarets
+                .sortedByDescending { it.selectionStart }
+                .forEach { caret ->
+                    val start = caret.selectionStart
+                    val end = caret.selectionEnd
+                    editor.document.replaceString(start, end, entry.text)
+                    caret.moveToOffset(start + entry.text.length)
+                    caret.removeSelection()
+                }
         }
+        editor.contentComponent.requestFocusInWindow()
+        updateActions()
+    }
 
-        ApplicationManager
-            .getApplication()
-            .runWriteAction {
+    private fun currentEditorIsWritable(): Boolean {
+        val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return false
+        return !editor.isDisposed && editor.document.isWritable
+    }
 
-                val document =
-                    editor.document
-
-                val caret =
-                    editor.caretModel
-
-                val offset =
-                    caret.offset
-
-                document.insertString(
-                    offset,
-                    entry.text
-                )
-
-                caret.moveToOffset(
-                    offset +
-                            entry.text.length
-                )
-            }
-
-        editor
-            .contentComponent
-            .requestFocusInWindow()
+    private fun removeSelected() {
+        list.selectedValue?.let(historyService::remove)
     }
 
     private fun clearHistory() {
+        if (model.isEmpty) return
+        val answer = Messages.showYesNoDialog(
+            project,
+            VoiceInputBundle.message("history.clear.confirmation"),
+            VoiceInputBundle.message("history.clear.title"),
+            Messages.getQuestionIcon()
+        )
+        if (answer == Messages.YES) historyService.clear()
+    }
 
-        historyService.clear()
+    override fun dispose() {
+        disposed = true
+        historyService.removeListener(this)
     }
 }
 
 private class HistoryCellRenderer(
-    private val formatter:
-    DateTimeFormatter
-) :
-    DefaultListCellRenderer() {
+    private val todayFormatter: DateTimeFormatter,
+    private val olderFormatter: DateTimeFormatter,
+    private val previewLimit: Int
+) : DefaultListCellRenderer() {
+
+    companion object {
+        private val LINE_BREAKS = Regex("[\\r\\n]+")
+    }
 
     override fun getListCellRendererComponent(
-        list: JList<*>?,
-        value: Any?,
-        index: Int,
-        isSelected: Boolean,
-        cellHasFocus: Boolean
+        list: JList<*>?, value: Any?, index: Int, isSelected: Boolean, cellHasFocus: Boolean
     ): Component {
-
-        val component =
-            super
-                .getListCellRendererComponent(
-                    list,
-                    value,
-                    index,
-                    isSelected,
-                    cellHasFocus
-                )
-
-        val entry =
-            value as?
-                    VoiceHistoryService.Entry
-
-        if (entry != null) {
-
-            val time =
-                entry.timestamp
-                    .format(
-                        formatter
-                    )
-
-            val preview =
-                entry.text
-                    .replace(
-                        '\n',
-                        ' '
-                    )
-                    .replace(
-                        '\r',
-                        ' '
-                    )
-                    .let {
-
-                        if (
-                            it.length >
-                            100
-                        ) {
-
-                            it.take(
-                                100
-                            ) + "…"
-
-                        } else {
-
-                            it
-                        }
-                    }
-
-            text =
-                "$time   $preview"
-
-            toolTipText =
-                entry.text
+        val component = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
+        val entry = value as? VoiceHistoryService.Entry ?: return component
+        val formatter = if (entry.timestamp.toLocalDate() == LocalDate.now()) todayFormatter else olderFormatter
+        val preview = entry.text.replace(LINE_BREAKS, " ").let {
+            if (it.length > previewLimit) it.take(previewLimit) + "…" else it
         }
 
+        text = "${entry.timestamp.format(formatter)}   $preview"
+        toolTipText = entry.text.takeIf { it.length <= previewLimit * 5 }
         return component
     }
 }

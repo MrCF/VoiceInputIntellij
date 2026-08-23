@@ -1,5 +1,6 @@
 package it.federico.voiceinput
 
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.*
 
@@ -8,27 +9,26 @@ object WhisperContextService {
     private const val MAX_PSI_TERMS = 120
     private const val MAX_NAME_LENGTH = 100
 
-    fun collect(editor: Editor?): List<String> {
-
-        if (editor == null || editor.isDisposed) {
+    fun collect(
+        editor: Editor?,
+        caretOffset: Int?
+    ): List<String> {
+        if (editor == null || caretOffset == null) {
             return emptyList()
         }
 
-        val project = editor.project ?: return emptyList()
+        return ReadAction.computeCancellable<List<String>, RuntimeException> {
+            if (editor.isDisposed) {
+                return@computeCancellable emptyList()
+            }
 
-        val virtualFile =
-            editor.virtualFile ?: return emptyList()
+            val project = editor.project ?: return@computeCancellable emptyList()
+            val virtualFile = editor.virtualFile ?: return@computeCancellable emptyList()
+            val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
+                ?: return@computeCancellable emptyList()
 
-        val psiFile =
-            PsiManager
-                .getInstance(project)
-                .findFile(virtualFile)
-                ?: return emptyList()
-
-        return collectFromPsiFile(
-            psiFile,
-            editor.caretModel.offset
-        )
+            collectFromPsiFile(psiFile, caretOffset)
+        }
     }
 
     private fun collectFromPsiFile(

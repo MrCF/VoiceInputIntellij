@@ -17,7 +17,8 @@ object WhisperPromptService {
 
     fun buildPrompt(
         editor: Editor?,
-        staticPrompt: String
+        staticPrompt: String,
+        caretOffset: Int?
     ): String {
 
         val terms =
@@ -29,7 +30,7 @@ object WhisperPromptService {
          * È la fonte principale del contesto dinamico.
          */
         WhisperContextService
-            .collect(editor)
+            .collect(editor, caretOffset)
             .forEach {
                 terms += it
             }
@@ -42,7 +43,8 @@ object WhisperPromptService {
          * rappresentare come PsiNamedElement.
          */
         collectNearbyTextTerms(
-            editor
+            editor,
+            caretOffset
         )
             .forEach {
                 terms += it
@@ -151,12 +153,14 @@ object WhisperPromptService {
     }
 
     private fun collectNearbyTextTerms(
-        editor: Editor?
+        editor: Editor?,
+        caretOffset: Int?
     ): List<String> {
 
         if (
             editor == null ||
-            editor.isDisposed
+            editor.isDisposed ||
+            caretOffset == null
         ) {
             return emptyList()
         }
@@ -172,7 +176,7 @@ object WhisperPromptService {
         }
 
         val caret =
-            editor.caretModel.offset
+            caretOffset.coerceIn(0, text.length)
 
         val start =
             (caret - TEXT_RADIUS)

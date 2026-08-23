@@ -269,6 +269,17 @@ object VoiceInputController {
         val capturedEditor =
             contextEditor
 
+        /*
+         * I modelli dell'editor possono essere letti solo sull'EDT.
+         * Il prompt viene costruito successivamente su un pooled thread,
+         * quindi conserviamo ora un semplice snapshot dell'offset.
+         */
+        val capturedCaretOffset =
+            capturedEditor
+                ?.takeUnless { it.isDisposed }
+                ?.caretModel
+                ?.offset
+
         clearCapturedContext()
 
         if (capturedTarget == null) {
@@ -291,18 +302,19 @@ object VoiceInputController {
                 .state
                 .prompt
 
-        val whisperPrompt =
-            WhisperPromptService
-                .buildPrompt(
-                    capturedEditor,
-                    staticPrompt
-                )
-
         ApplicationManager
             .getApplication()
             .executeOnPooledThread {
 
                 try {
+
+                    val whisperPrompt =
+                        WhisperPromptService
+                            .buildPrompt(
+                                capturedEditor,
+                                staticPrompt,
+                                capturedCaretOffset
+                            )
 
                     val transcription =
                         whisper.transcribe(
