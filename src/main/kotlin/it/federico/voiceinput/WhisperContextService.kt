@@ -1,11 +1,7 @@
 package it.federico.voiceinput
 
 import com.intellij.openapi.editor.Editor
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiNamedElement
-import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import com.intellij.psi.*
 
 object WhisperContextService {
 
@@ -71,7 +67,7 @@ object WhisperContextService {
          * Poi attraversiamo il file e raccogliamo tutti
          * gli elementi PSI che possiedono un nome:
          *
-         * classi
+         * Classi
          * metodi
          * campi
          * parametri
