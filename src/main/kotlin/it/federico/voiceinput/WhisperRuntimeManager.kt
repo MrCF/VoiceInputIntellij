@@ -20,7 +20,8 @@ object WhisperRuntimeManager {
         "libwhisper.so.1",
         "libggml.so.0",
         "libggml-base.so.0",
-        "libggml-cpu.so.0"
+        "libggml-cpu.so.0",
+        "libggml-vulkan.so.0"
     )
 
     fun getRuntimeDirectory(): File {

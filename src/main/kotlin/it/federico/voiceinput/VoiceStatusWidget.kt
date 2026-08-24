@@ -241,9 +241,7 @@ class VoiceStatusWidget(
 
                     if (
                         VoiceSessionService
-                            .isRecording ||
-                        VoiceSessionService
-                            .isTranscribing
+                            .isRecording
                     ) {
                         return
                     }

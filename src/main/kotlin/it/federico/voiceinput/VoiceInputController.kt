@@ -6,6 +6,9 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import com.intellij.util.concurrency.SequentialTaskExecutor
+import java.io.File
+import java.nio.file.Files
 
 object VoiceInputController {
 
@@ -23,9 +26,11 @@ object VoiceInputController {
             Editor? =
         null
 
-    @Volatile
-    private var transcriptionStarting =
-        false
+    private val transcriptionExecutor =
+        SequentialTaskExecutor
+            .createSequentialApplicationPoolExecutor(
+                "Voice Input transcription"
+            )
 
     val isRecording: Boolean
         get() =
@@ -43,10 +48,6 @@ object VoiceInputController {
     fun toggle(
         e: AnActionEvent
     ) {
-
-        if (isTranscribing) {
-            return
-        }
 
         if (isRecording) {
 
@@ -105,8 +106,7 @@ object VoiceInputController {
     ): Boolean {
 
         if (
-            isRecording ||
-            isTranscribing
+            isRecording
         ) {
             return false
         }
@@ -248,21 +248,6 @@ object VoiceInputController {
     private fun startTranscription(
         project: Project?
     ) {
-
-        synchronized(this) {
-
-            if (
-                transcriptionStarting ||
-                VoiceSessionService
-                    .isTranscribing
-            ) {
-                return
-            }
-
-            transcriptionStarting =
-                true
-        }
-
         val capturedTarget =
             target
 
@@ -283,18 +268,26 @@ object VoiceInputController {
         clearCapturedContext()
 
         if (capturedTarget == null) {
-
-            transcriptionStarting =
-                false
-
             VoiceSessionService
                 .setIdle()
 
             return
         }
 
-        VoiceSessionService
-            .setTranscribing()
+        val capturedAudioFile =
+            try {
+                snapshotRecordedAudio()
+            } catch (ex: Exception) {
+                VoiceSessionService.setIdle()
+                Messages.showErrorDialog(
+                    project,
+                    ex.message ?: "Errore durante la preparazione dell'audio.",
+                    "Voice Input"
+                )
+                return
+            }
+
+        VoiceSessionService.setTranscribing()
 
         val staticPrompt =
             VoiceSettings
@@ -302,9 +295,10 @@ object VoiceInputController {
                 .state
                 .prompt
 
-        ApplicationManager
-            .getApplication()
-            .executeOnPooledThread {
+        transcriptionExecutor.execute {
+
+                var sessionFinished =
+                    false
 
                 try {
 
@@ -318,13 +312,20 @@ object VoiceInputController {
 
                     val transcription =
                         whisper.transcribe(
-                            recorder.outputFile,
+                            capturedAudioFile,
                             whisperPrompt
                         )
 
+                    /*
+                     * La coda non passa alla registrazione successiva finché
+                     * questa trascrizione non è stata consegnata all'editor.
+                     * In questo modo anche l'ordine di inserimento, non solo
+                     * quello di esecuzione di Whisper, coincide con l'ordine
+                     * delle registrazioni.
+                     */
                     ApplicationManager
                         .getApplication()
-                        .invokeLater {
+                        .invokeAndWait {
 
                             try {
 
@@ -341,11 +342,11 @@ object VoiceInputController {
 
                             } finally {
 
-                                transcriptionStarting =
-                                    false
+                                sessionFinished =
+                                    true
 
                                 VoiceSessionService
-                                    .setIdle()
+                                    .transcriptionFinished()
                             }
                         }
 
@@ -353,13 +354,12 @@ object VoiceInputController {
 
                     ApplicationManager
                         .getApplication()
-                        .invokeLater {
+                        .invokeAndWait {
 
-                            transcriptionStarting =
-                                false
-
-                            VoiceSessionService
-                                .setIdle()
+                            if (!sessionFinished) {
+                                sessionFinished = true
+                                VoiceSessionService.transcriptionFinished()
+                            }
 
                             Messages.showErrorDialog(
                                 project,
@@ -368,8 +368,34 @@ object VoiceInputController {
                                 "Voice Input"
                             )
                         }
+                } finally {
+                    if (!sessionFinished) {
+                        VoiceSessionService.transcriptionFinished()
+                    }
+                    capturedAudioFile.delete()
                 }
             }
+    }
+
+    private fun snapshotRecordedAudio(): File {
+
+        val snapshot =
+            Files.createTempFile(
+                "voice-input-",
+                ".wav"
+            ).toFile()
+
+        return try {
+            Files.copy(
+                recorder.outputFile.toPath(),
+                snapshot.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING
+            )
+            snapshot
+        } catch (ex: Exception) {
+            snapshot.delete()
+            throw ex
+        }
     }
 
     private fun clearCapturedContext() {

@@ -22,6 +22,9 @@ class VoiceSettings :
         var language: String =
             "it",
 
+        var inputDeviceId: String =
+            AudioInputManager.DEFAULT_DEVICE_ID,
+
         var threads: Int =
             ThreadConfig.recommended,
 
@@ -61,7 +64,14 @@ class VoiceSettings :
             false,
 
         var autoStopSilenceSeconds: Double =
-            3.0
+            3.0,
+
+        /*
+         * RECORDING AUDIO FEEDBACK
+         */
+
+        var recordingAudioFeedbackEnabled: Boolean =
+            true
     )
 
     private var state =

@@ -5,7 +5,6 @@ import javax.sound.sampled.AudioFileFormat
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioInputStream
 import javax.sound.sampled.AudioSystem
-import javax.sound.sampled.DataLine
 import javax.sound.sampled.TargetDataLine
 
 class BenchmarkAudioRecorder {
@@ -49,16 +48,11 @@ class BenchmarkAudioRecorder {
                 false
             )
 
-        val info =
-            DataLine.Info(
-                TargetDataLine::class.java,
-                format
-            )
-
         line =
-            AudioSystem
-                .getLine(info)
-                    as TargetDataLine
+            AudioInputManager.openLine(
+                format,
+                VoiceSettings.getInstance().state.inputDeviceId
+            )
 
         line!!.open(format)
         line!!.start()

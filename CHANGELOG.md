@@ -2,6 +2,22 @@
 
 All notable changes to Voice Input will be documented in this file.
 
+## [0.4.0]
+
+### Added
+
+- Configurable audio input device selection.
+- Optional audio feedback when recording starts and stops.
+- Additional Whisper model choices, including Large v3 Turbo and Large v3.
+- Vulkan-enabled bundled whisper.cpp runtime for Linux x86-64.
+- Localized Voice Input history messages and history service coverage.
+
+### Changed
+
+- Recording can start while earlier recordings are still being transcribed.
+- Recordings are queued and inserted in their original recording order.
+- Each queued recording uses an independent temporary audio snapshot.
+
 ## [0.2.1]
 
 ### Improved

@@ -151,6 +151,7 @@ Available options include settings for:
 
 - Whisper model
 - transcription language
+- audio input device
 - technical prompt
 - Voice Activity Detection
 - Automatic Stop
@@ -158,7 +159,8 @@ Available options include settings for:
 
 ## Whisper models
 
-Voice Input supports local Whisper models.
+Voice Input supports Tiny, Base, Small, Medium, Large v3 Turbo and Large v3
+local Whisper models.
 
 Different model sizes provide different trade-offs between transcription accuracy, processing speed and resource usage.
 
@@ -188,7 +190,7 @@ Other operating systems and architectures are not currently included in the dist
 
 ## IntelliJ compatibility
 
-Voice Input `0.3.0` has been built and verified against:
+Voice Input `0.4.0` has been built and verified against:
 
 ```text
 IntelliJ IDEA 2026.2.1

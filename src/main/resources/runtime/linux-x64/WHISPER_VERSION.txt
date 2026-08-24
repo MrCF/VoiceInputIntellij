@@ -1,2 +1,2 @@
-whisper.cpp v1.9.1
+whisper.cpp v1.9.1 (Vulkan)
 https://github.com/ggml-org/whisper.cpp

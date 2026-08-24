@@ -27,6 +27,24 @@ object WhisperModelManager {
     val models =
         listOf(
             ModelDefinition(
+                id = "tiny",
+                modeName = "Lightweight",
+                displayName = "Tiny",
+                fileName = "ggml-tiny.bin",
+                url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin?download=true",
+                approximateSize = "~75 MiB"
+            ),
+
+            ModelDefinition(
+                id = "base",
+                modeName = "Lightweight",
+                displayName = "Base",
+                fileName = "ggml-base.bin",
+                url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin?download=true",
+                approximateSize = "~142 MiB"
+            ),
+
+            ModelDefinition(
                 id = "small",
                 modeName = "Fast",
                 displayName = "Small",
@@ -53,6 +71,15 @@ object WhisperModelManager {
                 fileName = "ggml-large-v3-turbo.bin",
                 url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin?download=true",
                 approximateSize = "~1.5 GiB"
+            ),
+
+            ModelDefinition(
+                id = "large-v3",
+                modeName = "Maximum quality",
+                displayName = "Large v3",
+                fileName = "ggml-large-v3.bin",
+                url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin?download=true",
+                approximateSize = "~3.1 GiB"
             )
         )
 

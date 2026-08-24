@@ -20,6 +20,7 @@ import javax.swing.JScrollPane
 import javax.swing.JSpinner
 import javax.swing.SpinnerNumberModel
 import javax.swing.SwingUtilities
+import javax.sound.sampled.AudioFormat
 
 class VoiceSettingsConfigurable :
     Configurable {
@@ -69,6 +70,13 @@ class VoiceSettingsConfigurable :
                     "Auto detect"
                 )
             )
+        )
+
+    private val inputDeviceCombo =
+        JComboBox(
+            AudioInputManager.devices(
+                AudioFormat(16_000f, 16, 1, true, false)
+            ).toTypedArray()
         )
 
     /*
@@ -214,6 +222,9 @@ class VoiceSettingsConfigurable :
                 0.5
             )
         )
+
+    private val recordingAudioFeedbackCheckBox =
+        JCheckBox("Play sounds when recording starts and stops")
 
     /*
      * BENCHMARK
@@ -436,6 +447,17 @@ class VoiceSettingsConfigurable :
                     languageCombo,
                     1,
                     false
+                )
+
+                .addLabeledComponent(
+                    JBLabel("Audio input:"),
+                    inputDeviceCombo,
+                    1,
+                    false
+                )
+
+                .addComponent(
+                    recordingAudioFeedbackCheckBox
                 )
 
                 .addLabeledComponent(
@@ -773,6 +795,13 @@ class VoiceSettingsConfigurable :
 
         return languageCombo.selectedItem
                 as LanguageOption
+    }
+
+    private fun selectedInputDevice():
+            AudioInputManager.Device {
+
+        return inputDeviceCombo.selectedItem
+                as AudioInputManager.Device
     }
 
     private fun selectedBenchmarkType():
@@ -2018,6 +2047,9 @@ class VoiceSettingsConfigurable :
                 selectedLanguage().id !=
                 settings.language ||
 
+                selectedInputDevice().id !=
+                settings.inputDeviceId ||
+
                 selectedThreads() !=
                 settings.threads ||
 
@@ -2045,6 +2077,9 @@ class VoiceSettingsConfigurable :
                 (autoStopSilenceSpinner.value as Number).toDouble() !=
                 settings.autoStopSilenceSeconds ||
 
+                recordingAudioFeedbackCheckBox.isSelected !=
+                settings.recordingAudioFeedbackEnabled ||
+
                 promptArea.text
                     .trim() !=
                 settings.prompt
@@ -2062,6 +2097,9 @@ class VoiceSettingsConfigurable :
 
         settings.language =
             selectedLanguage().id
+
+        settings.inputDeviceId =
+            selectedInputDevice().id
 
         settings.threads =
             selectedThreads()
@@ -2097,6 +2135,9 @@ class VoiceSettingsConfigurable :
             (autoStopSilenceSpinner.value as Number)
                 .toDouble()
 
+        settings.recordingAudioFeedbackEnabled =
+            recordingAudioFeedbackCheckBox.isSelected
+
         settings.prompt =
             promptArea.text.trim()
     }
@@ -2129,6 +2170,12 @@ class VoiceSettingsConfigurable :
 
         languageCombo.selectedItem =
             language
+
+        inputDeviceCombo.selectedItem =
+            (0 until inputDeviceCombo.itemCount)
+                .map { inputDeviceCombo.getItemAt(it) }
+                .firstOrNull { it.id == settings.inputDeviceId }
+                ?: inputDeviceCombo.getItemAt(0)
 
         threadsSpinner.value =
             settings.threads
@@ -2165,6 +2212,9 @@ class VoiceSettingsConfigurable :
                     1.5,
                     10.0
                 )
+
+        recordingAudioFeedbackCheckBox.isSelected =
+            settings.recordingAudioFeedbackEnabled
 
         promptArea.text =
             settings.prompt

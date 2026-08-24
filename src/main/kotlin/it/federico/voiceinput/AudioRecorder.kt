@@ -7,7 +7,6 @@ import javax.sound.sampled.AudioFileFormat
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioInputStream
 import javax.sound.sampled.AudioSystem
-import javax.sound.sampled.DataLine
 import javax.sound.sampled.TargetDataLine
 import kotlin.math.sqrt
 
@@ -128,20 +127,29 @@ class AudioRecorder {
             return
         }
 
-        val info =
-            DataLine.Info(
-                TargetDataLine::class.java,
-                format
-            )
-
         val currentLine =
-            AudioSystem
-                .getLine(info)
-                    as TargetDataLine
+            AudioInputManager.openLine(
+                format,
+                VoiceSettings.getInstance().state.inputDeviceId
+            )
 
         currentLine.open(
             format
         )
+
+        val settings =
+            VoiceSettings
+                .getInstance()
+                .state
+
+        /*
+         * La linea di ingresso e' aperta ma non ancora avviata: il cue
+         * conferma che il microfono e' pronto senza finire nel WAV.
+         */
+        if (settings.recordingAudioFeedbackEnabled) {
+            RecordingAudioFeedback
+                .playRecordingStarted()
+        }
 
         currentLine.start()
 
@@ -153,14 +161,6 @@ class AudioRecorder {
 
         recording =
             true
-
-        /*
-         * Snapshot delle Settings.
-         */
-        val settings =
-            VoiceSettings
-                .getInstance()
-                .state
 
         /*
          * Punto fondamentale:
@@ -190,6 +190,9 @@ class AudioRecorder {
                     autoStopSilenceNanos =
                         autoStopSilenceNanos,
 
+                    audioFeedbackEnabled =
+                        settings.recordingAudioFeedbackEnabled,
+
                     onAutoStop =
                         onAutoStop
                 )
@@ -210,6 +213,7 @@ class AudioRecorder {
         currentLine: TargetDataLine,
         autoStopEnabled: Boolean,
         autoStopSilenceNanos: Long,
+        audioFeedbackEnabled: Boolean,
         onAutoStop: (() -> Unit)?
     ) {
 
@@ -397,6 +401,11 @@ class AudioRecorder {
                 }
 
             } catch (_: Exception) {
+            }
+
+            if (audioFeedbackEnabled) {
+                RecordingAudioFeedback
+                    .playRecordingStopped()
             }
 
             /*

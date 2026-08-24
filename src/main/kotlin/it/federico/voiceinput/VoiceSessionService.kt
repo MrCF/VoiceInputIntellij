@@ -30,6 +30,12 @@ object VoiceSessionService {
     private var currentState =
         State.IDLE
 
+    private var recording =
+        false
+
+    private var activeTranscriptions =
+        0
+
     @Volatile
     private var recordingStartedAt =
         0L
@@ -44,14 +50,10 @@ object VoiceSessionService {
                     State.IDLE
 
     val isRecording: Boolean
-        get() =
-            currentState ==
-                    State.RECORDING
+        @Synchronized get() = recording
 
     val isTranscribing: Boolean
-        get() =
-            currentState ==
-                    State.TRANSCRIBING
+        @Synchronized get() = activeTranscriptions > 0
 
     /*
      * Durata della registrazione corrente.
@@ -75,40 +77,70 @@ object VoiceSessionService {
                     1_000_000L
         }
 
+    @Synchronized
     fun setRecording() {
 
         recordingStartedAt =
             System.nanoTime()
 
-        setState(
-            State.RECORDING
-        )
+        recording =
+            true
 
-        VoiceStatusState
-            .setRecording()
+        publishCurrentState()
     }
 
+    @Synchronized
     fun setTranscribing() {
 
-        setState(
-            State.TRANSCRIBING
-        )
-
-        VoiceStatusState
-            .setTranscribing()
-    }
-
-    fun setIdle() {
+        recording =
+            false
 
         recordingStartedAt =
             0L
 
-        setState(
-            State.IDLE
-        )
+        activeTranscriptions++
 
-        VoiceStatusState
-            .setReady()
+        publishCurrentState()
+    }
+
+    @Synchronized
+    fun setIdle() {
+
+        recording =
+            false
+
+        recordingStartedAt =
+            0L
+
+        publishCurrentState()
+    }
+
+    @Synchronized
+    fun transcriptionFinished() {
+
+        if (activeTranscriptions > 0) {
+            activeTranscriptions--
+        }
+
+        publishCurrentState()
+    }
+
+    private fun publishCurrentState() {
+
+        val newState =
+            when {
+                recording -> State.RECORDING
+                activeTranscriptions > 0 -> State.TRANSCRIBING
+                else -> State.IDLE
+            }
+
+        setState(newState)
+
+        when (newState) {
+            State.RECORDING -> VoiceStatusState.setRecording()
+            State.TRANSCRIBING -> VoiceStatusState.setTranscribing()
+            State.IDLE -> VoiceStatusState.setReady()
+        }
     }
 
     fun transcriptionCompleted(
