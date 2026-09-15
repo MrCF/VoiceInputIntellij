@@ -201,6 +201,8 @@ The IntelliJ Plugin Verifier reports the plugin as compatible with this IDE vers
 
 ## Building from source
 
+For installation of the released ZIP, including Vulkan drivers and native library requirements, see [install.md](INSTALL.md).
+
 Requirements:
 
 - JDK compatible with the IntelliJ Platform Gradle Plugin
