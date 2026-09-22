@@ -8,19 +8,24 @@ object TextInsertionService {
         target: TextTarget,
         text: String
     ) {
+        if (text.isBlank()) return
+
         when (target) {
 
             is TextTarget.IntelliJEditor -> {
 
                 val editor = target.editor
-                val offset = editor.caretModel.offset
-
                 WriteCommandAction.runWriteCommandAction(target.project) {
-                    editor.document.insertString(offset, text)
-
-                    editor.caretModel.moveToOffset(
-                        offset + text.length
+                    val selection = editor.selectionModel
+                    val start = if (selection.hasSelection()) selection.selectionStart else editor.caretModel.offset
+                    val end = if (selection.hasSelection()) selection.selectionEnd else start
+                    val content = editor.document.charsSequence
+                    val insertion = TranscriptionText.forInsertion(
+                        text, content.getOrNull(start - 1), content.getOrNull(end)
                     )
+                    editor.document.replaceString(start, end, insertion)
+                    selection.removeSelection()
+                    editor.caretModel.moveToOffset(start + insertion.length)
                 }
             }
 
@@ -31,6 +36,13 @@ object TextInsertionService {
                 val start = component.selectionStart
                 val end = component.selectionEnd
 
+                val document = component.document
+                val insertion = TranscriptionText.forInsertion(
+                    text,
+                    if (start > 0) document.getText(start - 1, 1)[0] else null,
+                    if (end < document.length) document.getText(end, 1)[0] else null
+                )
+
                 component.document.remove(
                     start,
                     end - start
@@ -38,12 +50,12 @@ object TextInsertionService {
 
                 component.document.insertString(
                     start,
-                    text,
+                    insertion,
                     null
                 )
 
                 component.caretPosition =
-                    start + text.length
+                    start + insertion.length
             }
         }
     }

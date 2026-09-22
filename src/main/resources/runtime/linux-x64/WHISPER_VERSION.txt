@@ -1,2 +1,15 @@
-whisper.cpp v1.9.1 (Vulkan)
+whisper.cpp v1.9.1
 https://github.com/ggml-org/whisper.cpp
+CPU source commit: f049fff95a089aa9969deb009cdd4892b3e74916
+
+Default runtime: existing Vulkan build (top-level files).
+Fallback runtime: independent CPU build (cpu/), no Vulkan dependency.
+CPU build: GCC 14.2.0, Release, GGML_NATIVE=OFF, GGML_BACKEND_DL=ON,
+GGML_CPU_ALL_VARIANTS=ON, GGML_VULKAN=OFF, GGML_CUDA=OFF.
+CPU prerequisites: glibc >= 2.38, GLIBCXX >= 3.4.29, OpenMP.
+Vulkan runtime prerequisites remain glibc >= 2.38, GLIBCXX >= 3.4.32.
+See scripts/build-cpu-runtime.sh to reproduce the CPU build.
+SHA256SUMS covers all distributed native binaries and defines the extraction revision.
+
+GPU checker: native/gpu-probe.c, linked against the bundled GGML backend.
+Rebuild using scripts/build-gpu-probe.sh with the pinned whisper.cpp checkout.

@@ -151,11 +151,16 @@ Available options include settings for:
 
 - Whisper model
 - transcription language
+- punctuation: no final period (default), or no punctuation
 - audio input device
+- processing: Automatic (recommended), CPU only, or GPU
 - technical prompt
 - Voice Activity Detection
 - Automatic Stop
 - silence duration
+
+The default punctuation mode removes the final period from each transcription while keeping internal punctuation, question marks and exclamation marks. The no-punctuation mode preserves apostrophes within words
+and decimal separators. Successive insertions add spaces where needed to avoid joining words.
 
 ## Whisper models
 
@@ -186,11 +191,18 @@ The current release bundles the whisper.cpp runtime for:
 Linux x86-64
 ```
 
+The package includes independent CPU and Vulkan runtimes. Vulkan is optional. **Automatic** checks GPU availability in the background and uses CPU when Vulkan or a compatible GPU is unavailable; a failed GPU
+transcription is retried on CPU. **CPU only** always transcribes on CPU. **GPU** requires a successful check and reports transcription errors without silently switching to CPU.
+
+GPU availability is checked on the first project startup and when opening settings. The GPU option is greyed out when unavailable, with an explanation below the Processing selector. Use **Check again** after
+installing Vulkan libraries or drivers; a successful check also clears a previous automatic CPU fallback. CPU-only startup skips GPU detection until settings are opened. Availability is cached between checks,
+and models remain selectable independently of the processing mode. The CPU runtime automatically selects a compatible instruction-set variant.
+
 Other operating systems and architectures are not currently included in the distributed runtime.
 
 ## IntelliJ compatibility
 
-Voice Input `0.4.0` has been built and verified against:
+The last Plugin Verifier compatibility check was performed on Voice Input `0.4.0` against:
 
 ```text
 IntelliJ IDEA 2026.2.1
@@ -201,7 +213,7 @@ The IntelliJ Plugin Verifier reports the plugin as compatible with this IDE vers
 
 ## Building from source
 
-For installation of the released ZIP, including Vulkan drivers and native library requirements, see [install.md](INSTALL.md).
+For installation of the released ZIP, including optional Vulkan drivers and native library requirements, see [install.md](INSTALL.md).
 
 Requirements:
 
@@ -217,7 +229,23 @@ Build the plugin with:
 The resulting plugin distribution is created under:
 
 ```text
-build/distributions/
+build/distributions/voice-input-0.4.2-linux-x86_64.zip
+```
+
+Install this ZIP using **Settings → Plugins → Install Plugin from Disk**. Older ZIPs may remain in this directory if the build is run without `clean`; choose the version you intend to install.
+
+To rebuild the CPU runtime from the pinned whisper.cpp source (requires Git, CMake, GCC, binutils and Python 3):
+
+```bash
+./scripts/build-cpu-runtime.sh
+# Rebuild the GPU checker against the same pinned source checkout:
+./scripts/build-gpu-probe.sh /path/to/whisper.cpp
+```
+
+Verify CPU operation with Vulkan loading blocked and compare CPU timings using a local English sample and model:
+
+```bash
+python3 scripts/check-cpu-runtime.py /path/to/ggml-tiny.en.bin /path/to/jfk.wav
 ```
 
 Run the IntelliJ Plugin Verifier with:

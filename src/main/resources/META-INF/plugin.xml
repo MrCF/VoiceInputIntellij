@@ -6,6 +6,8 @@
 
     <extensions defaultExtensionNs="com.intellij">
 
+        <postStartupActivity implementation="it.federico.voiceinput.GpuAvailabilityStartupActivity"/>
+
         <statusBarWidgetFactory
                 id="VoiceInputStatus"
                 implementation="it.federico.voiceinput.VoiceStatusWidgetFactory"/>

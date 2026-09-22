@@ -2,6 +2,34 @@
 
 All notable changes to Voice Input will be documented in this file.
 
+## [0.4.2]
+
+### Added
+
+- English Processing selector with Automatic (recommended), CPU only and GPU modes.
+- Background checks on first project startup and when opening settings, using the bundled backend to initialize a compatible Vulkan GPU.
+- Greyed-out GPU selection when unavailable, an explanatory message below the selector, and a Check again button.
+- Independent CPU runtime with portable and optimized processor backends; Vulkan is optional.
+
+### Changed
+
+- Automatic mode uses CPU when GPU requirements are missing and retries failed GPU transcriptions on CPU. CPU only avoids GPU transcription; GPU mode reports errors without silently falling back.
+- Availability checks are cached between rechecks. A successful recheck clears an earlier automatic CPU fallback. CPU-only startup skips GPU detection until settings are opened.
+- Models remain selectable independently of the processing mode.
+- One Linux x86-64 ZIP includes CPU and optional Vulkan acceleration, with separate content-versioned extraction directories to avoid mixing native libraries during upgrades.
+
+## [0.4.1]
+
+### Added
+
+- Punctuation settings: no final period (default), or no punctuation while preserving word apostrophes and decimal separators.
+- Custom vector Voice Input plugin logo.
+
+### Fixed
+
+- Automatic final periods no longer interrupt dictation across multiple recordings.
+- Inserted transcription blocks are separated from adjacent words where needed.
+
 ## [0.4.0]
 
 ### Added

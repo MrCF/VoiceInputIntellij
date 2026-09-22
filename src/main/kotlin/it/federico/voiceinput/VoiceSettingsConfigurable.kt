@@ -10,17 +10,8 @@ import com.intellij.util.ui.FormBuilder
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
-import javax.swing.JButton
-import javax.swing.JCheckBox
-import javax.swing.JComboBox
-import javax.swing.JComponent
-import javax.swing.JPanel
-import javax.swing.JProgressBar
-import javax.swing.JScrollPane
-import javax.swing.JSpinner
-import javax.swing.SpinnerNumberModel
-import javax.swing.SwingUtilities
 import javax.sound.sampled.AudioFormat
+import javax.swing.*
 
 class VoiceSettingsConfigurable :
     Configurable {
@@ -82,6 +73,14 @@ class VoiceSettingsConfigurable :
     /*
      * THREADS
      */
+
+    private val processingPanel = ProcessingSettingsPanel()
+
+    private val punctuationCombo =
+        JComboBox(PunctuationMode.entries.toTypedArray()).apply {
+            toolTipText = "No final period keeps internal punctuation, questions and exclamations. " +
+                    "No punctuation preserves apostrophes within words and decimal separators."
+        }
 
     private val threadsSpinner =
         JSpinner(
@@ -450,6 +449,20 @@ class VoiceSettingsConfigurable :
                 )
 
                 .addLabeledComponent(
+                    JBLabel("Processing:"),
+                    processingPanel,
+                    1,
+                    false
+                )
+
+                .addLabeledComponent(
+                    JBLabel("Punctuation:"),
+                    punctuationCombo,
+                    1,
+                    false
+                )
+
+                .addLabeledComponent(
                     JBLabel("Audio input:"),
                     inputDeviceCombo,
                     1,
@@ -597,6 +610,7 @@ class VoiceSettingsConfigurable :
                 .panel
 
         reset()
+        processingPanel.start()
 
         return panel!!
     }
@@ -1363,6 +1377,9 @@ class VoiceSettingsConfigurable :
         val threads =
             selectedThreads()
 
+        val punctuationMode = punctuationCombo.selectedItem as PunctuationMode
+        val processingMode = processingPanel.selectedMode
+
         /*
          * Per il benchmark tecnico il prompt è utile:
          * stiamo misurando il comportamento reale del
@@ -1414,7 +1431,10 @@ class VoiceSettingsConfigurable :
                             language.id,
 
                         threads =
-                            threads
+                            threads,
+
+                        punctuationMode = punctuationMode,
+                        processingMode = processingMode
                     )
 
                 transcriptionSeconds =
@@ -1498,6 +1518,7 @@ class VoiceSettingsConfigurable :
     private fun setBenchmarkControlsEnabled(
         enabled: Boolean
     ) {
+        processingPanel.setControlsEnabled(enabled)
 
         modeCombo.isEnabled =
             enabled
@@ -2050,6 +2071,10 @@ class VoiceSettingsConfigurable :
                 selectedInputDevice().id !=
                 settings.inputDeviceId ||
 
+                processingPanel.selectedMode != settings.processingMode ||
+
+                punctuationCombo.selectedItem != settings.punctuationMode ||
+
                 selectedThreads() !=
                 settings.threads ||
 
@@ -2086,6 +2111,14 @@ class VoiceSettingsConfigurable :
     }
 
     override fun apply() {
+        if (processingPanel.selectedMode == ProcessingMode.GPU && !GpuAvailabilityService.getInstance().current.checked) {
+            throw com.intellij.openapi.options.ConfigurationException("GPU availability is still being checked. Wait for the check to finish or select Automatic or CPU only.")
+        }
+        if (processingPanel.selectedMode == ProcessingMode.GPU && !GpuAvailabilityService.getInstance().current.available) {
+            throw com.intellij.openapi.options.ConfigurationException(
+                "GPU processing is unavailable. Select Automatic or CPU only, or click Check again after installing the Vulkan libraries and a compatible driver."
+            )
+        }
 
         val settings =
             VoiceSettings
@@ -2100,6 +2133,10 @@ class VoiceSettingsConfigurable :
 
         settings.inputDeviceId =
             selectedInputDevice().id
+
+        settings.processingMode = processingPanel.selectedMode
+
+        settings.punctuationMode = punctuationCombo.selectedItem as PunctuationMode
 
         settings.threads =
             selectedThreads()
@@ -2177,6 +2214,10 @@ class VoiceSettingsConfigurable :
                 .firstOrNull { it.id == settings.inputDeviceId }
                 ?: inputDeviceCombo.getItemAt(0)
 
+        processingPanel.selectedMode = settings.processingMode
+
+        punctuationCombo.selectedItem = settings.punctuationMode
+
         threadsSpinner.value =
             settings.threads
                 .coerceIn(
@@ -2230,6 +2271,7 @@ class VoiceSettingsConfigurable :
     }
 
     override fun disposeUIResources() {
+        processingPanel.dispose()
 
         if (
             benchmarkRecorder.isRecording

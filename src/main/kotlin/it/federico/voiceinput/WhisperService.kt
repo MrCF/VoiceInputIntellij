@@ -31,19 +31,13 @@ class WhisperService {
         modelDefinition:
         WhisperModelManager.ModelDefinition,
         language: String,
-        threads: Int
+        threads: Int,
+        punctuationMode: PunctuationMode = VoiceSettings.getInstance().state.punctuationMode,
+        processingMode: ProcessingMode = VoiceSettings.getInstance().state.processingMode
     ): String {
 
         val settings =
             VoiceSettings.getInstance().state
-
-        val runtimeDirectory =
-            WhisperRuntimeManager
-                .getRuntimeDirectory()
-
-        val whisperCli =
-            WhisperRuntimeManager
-                .getExecutable()
 
         val model =
             WhisperModelManager
@@ -53,8 +47,6 @@ class WhisperService {
 
         val command =
             mutableListOf(
-                whisperCli.absolutePath,
-
                 "-m",
                 model.absolutePath,
 
@@ -117,54 +109,7 @@ class WhisperService {
             )
         }
 
-        val processBuilder =
-            ProcessBuilder(command)
-
-        val environment =
-            processBuilder.environment()
-
-        val existingLibraryPath =
-            environment["LD_LIBRARY_PATH"]
-
-        environment["LD_LIBRARY_PATH"] =
-            if (
-                existingLibraryPath
-                    .isNullOrBlank()
-            ) {
-
-                runtimeDirectory.absolutePath
-
-            } else {
-
-                runtimeDirectory.absolutePath +
-                        File.pathSeparator +
-                        existingLibraryPath
-            }
-
-        val process =
-            processBuilder.start()
-
-        val stdout =
-            process.inputStream
-                .bufferedReader()
-                .readText()
-
-        val stderr =
-            process.errorStream
-                .bufferedReader()
-                .readText()
-
-        val exitCode =
-            process.waitFor()
-
-        if (exitCode != 0) {
-
-            throw RuntimeException(
-                "Whisper terminated with exit code " +
-                        "$exitCode\n$stderr"
-            )
-        }
-
-        return stdout.trim()
+        val stdout = WhisperRuntimeManager.transcribe(command, processingMode)
+        return TranscriptionText.format(stdout, punctuationMode)
     }
 }

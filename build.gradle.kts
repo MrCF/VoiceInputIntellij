@@ -7,7 +7,6 @@ plugins {
 }
 
 group = "it.federico.voiceinput"
-version = "0.4.0"
 
 dependencies {
     testImplementation(libs.junit)
@@ -52,14 +51,12 @@ intellijPlatform {
 
         changeNotes = """
             <ul>
-                <li>Added recording overlay with live REC timer</li>
-                <li>Added in-memory transcription history</li>
-                <li>Added Copy, Insert and Clear actions to Voice Input History</li>
-                <li>Added graphical Push-to-Talk control in the status bar</li>
-                <li>Push-to-Talk ignores automatic silence stop while held</li>
-                <li>Improved automatic stop with adaptive background-noise detection</li>
-                <li>Improved Whisper technical prompting to avoid excessive punctuation</li>
-                <li>Added Voice Activity Detection support</li>
+                <li>Added Automatic (recommended), CPU only and GPU processing modes</li>
+                <li>GPU availability is checked in the background on startup and when opening settings; unavailable GPU options are greyed out with an explanation</li>
+                <li>Added Check again to detect installed Vulkan libraries and drivers and retry GPU acceleration</li>
+                <li>Bundled an independent CPU runtime, making Vulkan optional for transcription</li>
+                <li>Automatic mode uses CPU when GPU requirements are missing and retries failed GPU transcriptions on CPU; GPU mode reports errors without silently falling back</li>
+                <li>Models remain available independently of the selected processing mode</li>
             </ul>
         """.trimIndent()
 
@@ -72,4 +69,8 @@ intellijPlatform {
             name = "Federico"
         }
     }
+}
+
+tasks.buildPlugin {
+    archiveClassifier.set("linux-x86_64")
 }
