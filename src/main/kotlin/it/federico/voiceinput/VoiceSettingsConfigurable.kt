@@ -76,12 +76,6 @@ class VoiceSettingsConfigurable :
 
     private val processingPanel = ProcessingSettingsPanel()
 
-    private val punctuationCombo =
-        JComboBox(PunctuationMode.entries.toTypedArray()).apply {
-            toolTipText = "No final period keeps internal punctuation, questions and exclamations. " +
-                    "No punctuation preserves apostrophes within words and decimal separators."
-        }
-
     private val threadsSpinner =
         JSpinner(
             SpinnerNumberModel(
@@ -451,13 +445,6 @@ class VoiceSettingsConfigurable :
                 .addLabeledComponent(
                     JBLabel("Processing:"),
                     processingPanel,
-                    1,
-                    false
-                )
-
-                .addLabeledComponent(
-                    JBLabel("Punctuation:"),
-                    punctuationCombo,
                     1,
                     false
                 )
@@ -1377,7 +1364,6 @@ class VoiceSettingsConfigurable :
         val threads =
             selectedThreads()
 
-        val punctuationMode = punctuationCombo.selectedItem as PunctuationMode
         val processingMode = processingPanel.selectedMode
 
         /*
@@ -1433,7 +1419,6 @@ class VoiceSettingsConfigurable :
                         threads =
                             threads,
 
-                        punctuationMode = punctuationMode,
                         processingMode = processingMode
                     )
 
@@ -2073,8 +2058,6 @@ class VoiceSettingsConfigurable :
 
                 processingPanel.selectedMode != settings.processingMode ||
 
-                punctuationCombo.selectedItem != settings.punctuationMode ||
-
                 selectedThreads() !=
                 settings.threads ||
 
@@ -2135,8 +2118,6 @@ class VoiceSettingsConfigurable :
             selectedInputDevice().id
 
         settings.processingMode = processingPanel.selectedMode
-
-        settings.punctuationMode = punctuationCombo.selectedItem as PunctuationMode
 
         settings.threads =
             selectedThreads()
@@ -2215,8 +2196,6 @@ class VoiceSettingsConfigurable :
                 ?: inputDeviceCombo.getItemAt(0)
 
         processingPanel.selectedMode = settings.processingMode
-
-        punctuationCombo.selectedItem = settings.punctuationMode
 
         threadsSpinner.value =
             settings.threads

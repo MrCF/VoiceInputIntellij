@@ -151,7 +151,6 @@ Available options include settings for:
 
 - Whisper model
 - transcription language
-- punctuation: no final period (default), or no punctuation
 - audio input device
 - processing: Automatic (recommended), CPU only, or GPU
 - technical prompt
@@ -159,8 +158,8 @@ Available options include settings for:
 - Automatic Stop
 - silence duration
 
-The default punctuation mode removes the final period from each transcription while keeping internal punctuation, question marks and exclamation marks. The no-punctuation mode preserves apostrophes within words
-and decimal separators. Successive insertions add spaces where needed to avoid joining words.
+Transcriptions are always lowercase and have no final period, so dictation can continue across pauses without adding capitals or ending the sentence. Internal punctuation, question marks and exclamation marks
+are preserved. Successive insertions add spaces where needed to avoid joining words.
 
 ## Whisper models
 
@@ -229,7 +228,7 @@ Build the plugin with:
 The resulting plugin distribution is created under:
 
 ```text
-build/distributions/voice-input-0.4.2-linux-x86_64.zip
+build/distributions/voice-input-0.4.6-linux-x86_64.zip
 ```
 
 Install this ZIP using **Settings → Plugins → Install Plugin from Disk**. Older ZIPs may remain in this directory if the build is run without `clean`; choose the version you intend to install.

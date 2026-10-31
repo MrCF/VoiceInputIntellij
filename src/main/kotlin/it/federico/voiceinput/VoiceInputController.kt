@@ -265,7 +265,7 @@ object VoiceInputController {
                 ?.caretModel
                 ?.offset
 
-        clearCapturedContext()
+        clearCapturedContext(releaseTarget = false)
 
         if (capturedTarget == null) {
             VoiceSessionService
@@ -276,8 +276,13 @@ object VoiceInputController {
 
         val capturedAudioFile =
             try {
-                snapshotRecordedAudio()
+                snapshotRecordedAudio() ?: run {
+                    capturedTarget.close()
+                    VoiceSessionService.setIdle()
+                    return
+                }
             } catch (ex: Exception) {
+                capturedTarget.close()
                 VoiceSessionService.setIdle()
                 Messages.showErrorDialog(
                     project,
@@ -372,12 +377,17 @@ object VoiceInputController {
                     if (!sessionFinished) {
                         VoiceSessionService.transcriptionFinished()
                     }
+                    capturedTarget.close()
                     capturedAudioFile.delete()
                 }
             }
     }
 
-    private fun snapshotRecordedAudio(): File {
+    private fun snapshotRecordedAudio(): File? {
+
+        if (!recorder.outputFile.exists()) {
+            return null
+        }
 
         val snapshot =
             Files.createTempFile(
@@ -391,6 +401,7 @@ object VoiceInputController {
                 snapshot.toPath(),
                 java.nio.file.StandardCopyOption.REPLACE_EXISTING
             )
+            Files.deleteIfExists(recorder.outputFile.toPath())
             snapshot
         } catch (ex: Exception) {
             snapshot.delete()
@@ -398,7 +409,9 @@ object VoiceInputController {
         }
     }
 
-    private fun clearCapturedContext() {
+    private fun clearCapturedContext(releaseTarget: Boolean = true) {
+
+        if (releaseTarget) target?.close()
 
         target =
             null

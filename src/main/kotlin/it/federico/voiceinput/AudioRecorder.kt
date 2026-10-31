@@ -3,14 +3,20 @@ package it.federico.voiceinput
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
-import javax.sound.sampled.AudioFileFormat
-import javax.sound.sampled.AudioFormat
-import javax.sound.sampled.AudioInputStream
-import javax.sound.sampled.AudioSystem
-import javax.sound.sampled.TargetDataLine
+import java.nio.file.Files
+import javax.sound.sampled.*
 import kotlin.math.sqrt
 
-class AudioRecorder {
+class AudioRecorder internal constructor(
+    val outputFile: File,
+    private val settingsProvider: () -> VoiceSettings.State,
+    private val openLine: (AudioFormat, String) -> TargetDataLine
+) {
+    constructor() : this(
+        File(System.getProperty("java.io.tmpdir"), "voice-input.wav"),
+        { VoiceSettings.getInstance().state },
+        AudioInputManager::openLine
+    )
 
     companion object {
 
@@ -92,14 +98,6 @@ class AudioRecorder {
     private var stopRequested =
         false
 
-    val outputFile =
-        File(
-            System.getProperty(
-                "java.io.tmpdir"
-            ),
-            "voice-input.wav"
-        )
-
     val isRecording: Boolean
         get() =
             recording
@@ -127,20 +125,16 @@ class AudioRecorder {
             return
         }
 
+        // Never allow a new session to reuse audio from an earlier recording.
+        Files.deleteIfExists(outputFile.toPath())
+
+        val settings = settingsProvider()
         val currentLine =
-            AudioInputManager.openLine(
-                format,
-                VoiceSettings.getInstance().state.inputDeviceId
-            )
+            openLine(format, settings.inputDeviceId)
 
         currentLine.open(
             format
         )
-
-        val settings =
-            VoiceSettings
-                .getInstance()
-                .state
 
         /*
          * La linea di ingresso e' aperta ma non ancora avviata: il cue
@@ -289,14 +283,6 @@ class AudioRecorder {
                     bytesRead
                 )
 
-                /*
-                 * In PTT arriviamo sempre qui
-                 * perché autoStopEnabled = false.
-                 */
-                if (!autoStopEnabled) {
-                    continue
-                }
-
                 val rms =
                     calculateRms(
                         buffer,
@@ -362,7 +348,7 @@ class AudioRecorder {
                      * Non fermiamo la registrazione
                      * prima che l'utente abbia parlato.
                      */
-                    if (!speechDetected) {
+                    if (!autoStopEnabled || !speechDetected) {
                         continue
                     }
 
@@ -411,9 +397,9 @@ class AudioRecorder {
             /*
              * Creiamo il WAV completo.
              */
-            writeWaveFile(
-                rawAudio.toByteArray()
-            )
+            if (speechDetected) {
+                writeWaveFile(rawAudio.toByteArray())
+            }
 
             synchronized(this) {
 

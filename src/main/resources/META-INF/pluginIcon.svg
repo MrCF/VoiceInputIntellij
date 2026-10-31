@@ -1,24 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" fill="none">
-  <defs>
-    <linearGradient id="frame" x1="9" y1="7" x2="32" y2="31" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FF2368"/>
-      <stop offset=".45" stop-color="#643BFF"/>
-      <stop offset="1" stop-color="#00B8F5"/>
-    </linearGradient>
-  </defs>
-  <rect x="4" y="4" width="32" height="32" rx="8" fill="#0D1422"/>
-  <path d="M7 17 11 8 30 11 33 18M9 26 8 30 27 34 30 29"
-        stroke="url(#frame)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="10" y="14" width="4.5" height="9" rx="2.25" fill="#F5F8FF"/>
-  <path d="M8.5 20.5v.5a3.75 3.75 0 0 0 7.5 0v-.5M12.25 24.75V27M10.5 27H14"
-        stroke="#F5F8FF" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M17.5 16.5a8 8 0 0 1 0 8"
-        stroke="#2EB2FF" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M20 20.5h2.5m-1.25-1.25 1.25 1.25-1.25 1.25"
-        stroke="#2EB2FF" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M25 14.5h4l3 3v8.75c0 .7-.55 1.25-1.25 1.25H25c-.7 0-1.25-.55-1.25-1.25v-10.5c0-.7.55-1.25 1.25-1.25Z"
-        fill="#F5F8FF"/>
-  <path d="M29 14.5V18h3" stroke="#0D1422" stroke-width="1" stroke-linejoin="round"/>
-  <path d="M25.75 20.5h4.25m-4.25 2.25h4.25M25.75 25h3"
-        stroke="#087EFF" stroke-width="1.25" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <!-- microphone -->
+        <rect x="7.5" y="7" width="7" height="14" rx="3.5" fill="#3574F0" stroke="#3574F0" stroke-width="1.2"/>
+        <path d="M5.5 17.5v1.2a5.5 5.5 0 0 0 11 0v-1.2" stroke="#3574F0" stroke-width="2"/>
+        <path d="M11 24v4.2M8.2 28.2h5.6" stroke="#3574F0" stroke-width="2"/>
+        <!-- sound wave -->
+        <path d="M19.5 15.5v7" stroke="#6B57FF" stroke-width="2.2"/>
+        <path d="M22.5 13.5v11" stroke="#6B57FF" stroke-width="2.2"/>
+        <path d="M25.5 15.5v7" stroke="#6B57FF" stroke-width="2.2"/>
+        <!-- document -->
+        <path d="M29 9.5h5l3.5 3.5v17.5H29z" fill="#FFFFFF" stroke="#3574F0" stroke-width="1.5"/>
+        <path d="M34 9.5V14h3.5" stroke="#3574F0" stroke-width="1.5"/>
+        <path d="M31 18h4M31 21.5h4M31 25h3" stroke="#3574F0" stroke-width="1.4"/>
+    </g>
 </svg>

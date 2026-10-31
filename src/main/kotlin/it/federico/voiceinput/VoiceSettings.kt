@@ -31,9 +31,6 @@ class VoiceSettings :
         var processingMode: ProcessingMode =
             ProcessingMode.AUTOMATIC,
 
-        var punctuationMode: PunctuationMode =
-            PunctuationMode.WITHOUT_FINAL_PERIOD,
-
         var prompt: String =
             "Java, Spring Boot, REST, JPA, Optional, " +
                     "ResponseEntity, HttpStatus, " +

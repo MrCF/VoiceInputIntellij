@@ -2,6 +2,25 @@
 
 All notable changes to Voice Input will be documented in this file.
 
+## [0.4.6]
+
+### Changed
+
+- Improved IntelliJ IDEA 2026.2 compatibility by removing unnecessary Kotlin-generated JVM compatibility bridge methods.
+
+## [0.4.5]
+
+### Fixed
+
+- Empty or silent recordings no longer reuse previous audio. Temporary WAV files are removed after transcription, including failures.
+- Dictation is inserted at the position captured when recording starts, even if the cursor moves while transcription is running. Captured positions track document edits and preserve queued dictation order.
+
+## [0.4.4]
+
+### Changed
+
+- Transcriptions are always lowercase without a final period, preserving other punctuation. Removed the punctuation selector.
+
 ## [0.4.2]
 
 ### Added

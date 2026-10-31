@@ -1,3 +1,4 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -7,6 +8,12 @@ plugins {
 }
 
 group = "it.federico.voiceinput"
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-jvm-default=no-compatibility")
+    }
+}
 
 dependencies {
     testImplementation(libs.junit)
@@ -18,6 +25,12 @@ dependencies {
 }
 
 intellijPlatform {
+    pluginVerification {
+        ides {
+            create(IntelliJPlatformType.IntellijIdea, "2026.2")
+        }
+    }
+
     pluginConfiguration {
         id = "it.federico.voiceinput"
         name = "Voice Input"
@@ -51,12 +64,7 @@ intellijPlatform {
 
         changeNotes = """
             <ul>
-                <li>Added Automatic (recommended), CPU only and GPU processing modes</li>
-                <li>GPU availability is checked in the background on startup and when opening settings; unavailable GPU options are greyed out with an explanation</li>
-                <li>Added Check again to detect installed Vulkan libraries and drivers and retry GPU acceleration</li>
-                <li>Bundled an independent CPU runtime, making Vulkan optional for transcription</li>
-                <li>Automatic mode uses CPU when GPU requirements are missing and retries failed GPU transcriptions on CPU; GPU mode reports errors without silently falling back</li>
-                <li>Models remain available independently of the selected processing mode</li>
+                <li>Improved compatibility with IntelliJ IDEA 2026.2 by removing unnecessary Kotlin-generated JVM compatibility bridge methods</li>
             </ul>
         """.trimIndent()
 

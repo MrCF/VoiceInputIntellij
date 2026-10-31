@@ -32,7 +32,6 @@ class WhisperService {
         WhisperModelManager.ModelDefinition,
         language: String,
         threads: Int,
-        punctuationMode: PunctuationMode = VoiceSettings.getInstance().state.punctuationMode,
         processingMode: ProcessingMode = VoiceSettings.getInstance().state.processingMode
     ): String {
 
@@ -110,6 +109,6 @@ class WhisperService {
         }
 
         val stdout = WhisperRuntimeManager.transcribe(command, processingMode)
-        return TranscriptionText.format(stdout, punctuationMode)
+        return TranscriptionText.format(stdout)
     }
 }
