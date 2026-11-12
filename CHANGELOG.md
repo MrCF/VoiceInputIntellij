@@ -2,6 +2,12 @@
 
 All notable changes to Voice Input will be documented in this file.
 
+## [0.4.7]
+
+### Changed
+
+- Added compatibility with IntelliJ IDEA 2026.3.
+
 ## [0.4.6]
 
 ### Changed

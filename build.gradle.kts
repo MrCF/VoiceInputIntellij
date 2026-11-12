@@ -19,7 +19,7 @@ dependencies {
     testImplementation(libs.junit)
 
     intellijPlatform {
-        intellijIdea("2026.2")
+        intellijIdea("2026.3")
         testFramework(TestFrameworkType.Platform)
     }
 }
@@ -27,7 +27,7 @@ dependencies {
 intellijPlatform {
     pluginVerification {
         ides {
-            create(IntelliJPlatformType.IntellijIdea, "2026.2")
+            create(IntelliJPlatformType.IntellijIdea, "2026.3")
         }
     }
 
@@ -69,8 +69,8 @@ intellijPlatform {
         """.trimIndent()
 
         ideaVersion {
-            sinceBuild = "262"
-            untilBuild = "262.*"
+            sinceBuild = "263"
+            untilBuild = "263.*"
         }
 
         vendor {
